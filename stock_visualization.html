@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K线筹码分布</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #131722;
+            min-height: 100vh;
+            color: #e0e0e0
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 15px
+        }
+
+        header {
+            text-align: center;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 12px;
+            margin-bottom: 12px
+        }
+
+        header h1 {
+            font-size: 1.6rem;
+            color: #2962ff
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 10px
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 6px
+        }
+
+        .control-group label {
+            color: #787b86;
+            font-size: 0.85rem
+        }
+
+        select {
+            padding: 8px 12px;
+            border: 1px solid #363a45;
+            border-radius: 6px;
+            background: #1e222d;
+            color: #d1d4dc;
+            font-size: 0.85rem
+        }
+
+        button {
+            padding: 8px 20px;
+            background: #2962ff;
+            border: none;
+            border-radius: 6px;
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer
+        }
+
+        #chart {
+            width: 100%;
+            height: 450px;
+            background: #131722;
+            border-radius: 12px;
+            border: 1px solid #1e222d
+        }
+
+        .range-info {
+            text-align: center;
+            padding: 8px;
+            background: #1e222d;
+            font-size: 0.8rem;
+            color: #787b86;
+            border-radius: 0 0 12px 12px
+        }
+
+        .range-info span {
+            color: #2962ff
+        }
+
+        .info-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+            justify-content: center
+        }
+
+        .info-item {
+            padding: 10px 15px;
+            background: #1e222d;
+            border-radius: 8px;
+            text-align: center;
+            min-width: 90px
+        }
+
+        .info-item .lbl {
+            font-size: 0.75rem;
+            color: #787b86
+        }
+
+        .info-item .val {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #d1d4dc
+        }
+
+        .info-item .val.up {
+            color: #fff
+        }
+
+        .info-item .val.dn {
+            color: #2962ff
+        }
+
+        .file-label {
+            padding: 8px 16px;
+            background: #1e222d;
+            border: 1px dashed #363a45;
+            border-radius: 6px;
+            cursor: pointer;
+            color: #787b86
+        }
+
+        #file-input {
+            display: none
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>K线 + 筹码分布</h1>
+        </header>
+        <div class="controls">
+            <label class="file-label" for="file-input">加载CSV</label>
+            <input type="file" id="file-input" accept=".csv">
+            <div class="control-group"><label>股票:</label><select id="stock-sel">
+                    <option>请加载数据</option>
+                </select></div>
+            <div class="control-group"><label>档位:</label><select id="bins-sel">
+                    <option value="40">40</option>
+                    <option value="60" selected>60</option>
+                    <option value="80">80</option>
+                </select></div>
+        </div>
+        <div id="chart"></div>
+        <div class="range-info">
+            <label style="margin-right:15px;cursor:pointer"><input type="checkbox" id="lock-range"
+                    style="margin-right:4px">固定范围</label>
+            筹码范围: <span id="r-start">-</span> 至 <span id="r-end">-</span> (共<span id="r-cnt">0</span>根)
+        </div>
+        <div class="info-row">
+            <div class="info-item">
+                <div class="lbl">最新价</div>
+                <div class="val" id="i-close">-</div>
+            </div>
+            <div class="info-item">
+                <div class="lbl">涨跌</div>
+                <div class="val" id="i-chg">-</div>
+            </div>
+            <div class="info-item">
+                <div class="lbl">LVN</div>
+                <div class="val" id="i-lvn">-</div>
+            </div>
+            <div class="info-item">
+                <div class="lbl">VAH</div>
+                <div class="val" id="i-vah">-</div>
+            </div>
+            <div class="info-item">
+                <div class="lbl">VAL</div>
+                <div class="val" id="i-val">-</div>
+            </div>
+        </div>
+    </div>
+    <script>
+        let rawData = [], stocks = [], chart = null, sData = [], tf = '1d', zStart = 0, zEnd = 100;
+
+        document.getElementById('file-input').onchange = function (e) {
+            let f = e.target.files[0];
+            if (!f) return;
+            Papa.parse(f, {
+                header: true,
+                complete: function (r) {
+                    rawData = r.data.filter(x => x.date && x.close);
+                    let m = new Map();
+                    rawData.forEach(x => { if (x['股票代码'] && x['股票名称']) m.set(x['股票代码'], x['股票名称']); });
+                    stocks = Array.from(m.entries());
+                    document.getElementById('stock-sel').innerHTML = stocks.map(([c, n]) => '<option value="' + c + '">' + c + ' ' + n + '</option>').join('');
+                    initChart();
+                    if (stocks.length > 0) draw();
+                }
+            });
+        };
+
+        function initChart() {
+            document.getElementById('chart').innerHTML = '';
+            chart = echarts.init(document.getElementById('chart'));
+            window.onresize = function () { chart.resize(); };
+        }
+
+        // 找所有低量能区间（低于最大值的50%）
+        function findAllLVNZones(total, centers, maxVol, binSz) {
+            let n = total.length;
+            if (n < 5) return [];
+            let threshold = maxVol * 0.5;
+            let isLow = total.map(v => v < threshold);
+            let zones = [];
+            let i = 0;
+            while (i < n) {
+                if (isLow[i]) {
+                    let start = i;
+                    while (i < n && isLow[i]) i++;
+                    let end = i - 1;
+                    if (end >= start) {
+                        zones.push({ startIdx: start, endIdx: end, priceHigh: centers[start] + binSz / 2, priceLow: centers[end] - binSz / 2 });
+                    }
+                } else { i++; }
+            }
+            return zones;
+        }
+
+        function calcVP(data, bins, yMin, yMax) {
+            if (!data.length || yMin >= yMax) return null;
+            let binSz = (yMax - yMin) / bins;
+            let profUp = Array(bins).fill(0), profDn = Array(bins).fill(0), centers = [];
+            for (let i = 0; i < bins; i++) centers.push(yMin + binSz * (i + 0.5));
+
+            data.forEach(x => {
+                let o = +x.open, c = +x.close, h = +x.high, l = +x.low, v = +x.volume || 0;
+                if (v === 0 || h <= l) return;
+                let isUp = c >= o;
+                for (let i = 0; i < bins; i++) {
+                    let bL = yMin + binSz * i, bH = yMin + binSz * (i + 1);
+                    let oL = Math.max(l, bL), oH = Math.min(h, bH);
+                    if (oH > oL) {
+                        let vol = v * (oH - oL) / (h - l);
+                        if (isUp) profUp[i] += vol; else profDn[i] += vol;
+                    }
+                }
+            });
+
+            let total = profUp.map((u, i) => u + profDn[i]);
+            let mx = Math.max(...total);
+            let normUp = mx > 0 ? profUp.map(v => v / mx * 100) : profUp;
+            let normDn = mx > 0 ? profDn.map(v => v / mx * 100) : profDn;
+
+            let tot = total.reduce((a, b) => a + b, 0);
+            if (tot === 0) return { centers, normUp, normDn, total, mx, vah: yMax, val: yMin, binSz };
+            let sorted = total.map((v, i) => ({ v, i })).sort((a, b) => b.v - a.v);
+            let cum = 0, vaI = [];
+            for (let it of sorted) { cum += it.v; vaI.push(it.i); if (cum >= tot * 0.7) break; }
+            let vah = Math.max(...vaI.map(i => centers[i])), val = Math.min(...vaI.map(i => centers[i]));
+
+            return { centers, normUp, normDn, total, mx, vah, val, binSz };
+        }
+
+        function draw() {
+            let code = document.getElementById('stock-sel').value;
+            if (!code || !rawData.length) return;
+            let data = rawData.filter(x => x['股票代码'] === code);
+            if (!data.length) return;
+            sData = data;
+
+            let dates = data.map(x => x.date);
+            let ohlc = data.map(x => [+x.open, +x.close, +x.low, +x.high]);
+            let vols = data.map(x => +x.volume || 0);
+
+            let lt = data[data.length - 1], pv = data[data.length - 2];
+            let cl = +lt.close, pcl = pv ? +pv.close : cl;
+            let chg = ((cl - pcl) / pcl * 100).toFixed(2);
+            document.getElementById('i-close').textContent = cl.toFixed(2);
+            let chgEl = document.getElementById('i-chg');
+            chgEl.textContent = (chg >= 0 ? '+' : '') + chg + '%';
+            chgEl.className = 'val ' + (chg >= 0 ? 'up' : 'dn');
+
+            chart.setOption({
+                backgroundColor: 'transparent',
+                animation: false,
+                tooltip: { trigger: 'axis', axisPointer: { type: 'cross', lineStyle: { color: '#787b86' } } },
+                grid: [{ left: 50, right: 120, top: 30, bottom: 50 }],
+                xAxis: [{ type: 'category', data: dates, axisLine: { lineStyle: { color: '#363a45' } }, axisLabel: { color: '#787b86', fontSize: 9 }, splitLine: { show: false } }],
+                yAxis: [
+                    { scale: true, position: 'left', axisLine: { lineStyle: { color: '#363a45' } }, axisLabel: { color: '#787b86', fontSize: 9 }, splitLine: { lineStyle: { color: '#1e222d' } } },
+                    { scale: true, show: false, max: function (value) { return value.max * 5; } }
+                ],
+                dataZoom: [
+                    { type: 'inside', xAxisIndex: [0], start: zStart, end: zEnd },
+                    { type: 'slider', xAxisIndex: [0], start: zStart, end: zEnd, height: 16, bottom: 5, borderColor: '#363a45', backgroundColor: '#1e222d', fillerColor: 'rgba(41,98,255,0.2)', handleStyle: { color: '#2962ff' } }
+                ],
+                series: [
+                    { type: 'candlestick', data: ohlc, itemStyle: { color: '#ffffff', color0: '#2962ff', borderColor: '#ffffff', borderColor0: '#2962ff' } },
+                    { type: 'bar', yAxisIndex: 1, data: vols.map((v, i) => ({ value: v, itemStyle: { color: ohlc[i][1] >= ohlc[i][0] ? 'rgba(255,255,255,0.25)' : 'rgba(41,98,255,0.25)' } })), barWidth: '60%' }
+                ]
+            }, true);
+
+            setTimeout(() => { try { updateVP(); } catch (e) { console.log(e); } }, 150);
+            chart.off('dataZoom');
+            chart.on('dataZoom', function (p) {
+                let s = p.batch ? p.batch[0].start : p.start;
+                let e = p.batch ? p.batch[0].end : p.end;
+                zStart = s; zEnd = e;
+                setTimeout(() => { try { updateVP(); } catch (e) { } }, 100);
+            });
+        }
+
+        function updateVP() {
+            let bins = +document.getElementById('bins-sel').value;
+            let si = Math.floor(zStart / 100 * sData.length);
+            let ei = Math.ceil(zEnd / 100 * sData.length) - 1;
+            let rd = sData.slice(si, ei + 1);
+            if (!rd.length) return;
+
+            document.getElementById('r-start').textContent = rd[0].date;
+            document.getElementById('r-end').textContent = rd[rd.length - 1].date;
+            document.getElementById('r-cnt').textContent = rd.length;
+
+            let ya = chart.getModel().getComponent('yAxis', 0);
+            let ext = ya.axis.scale.getExtent();
+            let yMin = ext[0], yMax = ext[1];
+
+            let vp = calcVP(rd, bins, yMin, yMax);
+            if (!vp) return;
+
+            document.getElementById('i-vah').textContent = vp.vah.toFixed(2);
+            document.getElementById('i-val').textContent = vp.val.toFixed(2);
+
+            let grid = chart.getModel().getComponent('grid', 0);
+            let coordSys = chart.getModel().getSeriesByIndex(0).coordinateSystem;
+            let gridRect = grid.coordinateSystem.getRect();
+            let vpLeft = gridRect.x + gridRect.width + 5;
+            let vpWidth = 110;
+
+            chart.setOption({ graphic: [] }, { replaceMerge: ['graphic'] });
+
+            let graphics = [];
+            let currentPrice = +rd[rd.length - 1].close;
+
+            // 找所有低量能区间
+            let allLvnZones = findAllLVNZones(vp.total, vp.centers, vp.mx, vp.binSz);
+
+            // 先收集每个低量能区间的信息（价格和颜色）
+            let lvnLines = [];
+            allLvnZones.forEach(lvn => {
+                let midIdx = Math.floor((lvn.startIdx + lvn.endIdx) / 2);
+                let midPrice = vp.centers[midIdx];
+
+                let volumeAbove = 0, volumeBelow = 0;
+                for (let i = 0; i < vp.total.length; i++) {
+                    if (i < midIdx) volumeAbove += vp.total[i];
+                    else if (i > midIdx) volumeBelow += vp.total[i];
+                }
+
+                let ratio = volumeAbove / (volumeAbove + volumeBelow);
+                let color = 'yellow';
+                if (ratio > 0.55) color = 'red';
+                else if (ratio < 0.45) color = 'green';
+
+                lvnLines.push({ price: midPrice, color: color, idx: midIdx });
+            });
+
+            // 合并相邻的同色线为区间
+            let mergedZones = [];
+            for (let line of lvnLines) {
+                if (mergedZones.length === 0) {
+                    mergedZones.push({ priceHigh: line.price, priceLow: line.price, color: line.color });
+                } else {
+                    let last = mergedZones[mergedZones.length - 1];
+                    // 如果颜色相同且价格相近（差距小于5%），合并
+                    if (last.color === line.color && Math.abs(line.price - last.priceLow) < last.priceLow * 0.08) {
+                        last.priceLow = Math.min(last.priceLow, line.price);
+                        last.priceHigh = Math.max(last.priceHigh, line.price);
+                    } else {
+                        mergedZones.push({ priceHigh: line.price, priceLow: line.price, color: line.color });
+                    }
+                }
+            }
+
+            // 绘制合并后的区间
+            mergedZones.forEach(zone => {
+                let y1 = coordSys.dataToPoint([0, zone.priceHigh])[1];
+                let y2 = coordSys.dataToPoint([0, zone.priceLow])[1];
+
+                if (zone.color === 'red') {
+                    // 红色区间
+                    graphics.push({
+                        type: 'rect',
+                        shape: { x: gridRect.x, y: Math.min(y1, y2), width: gridRect.width + vpWidth + 5, height: Math.abs(y2 - y1) || 2 },
+                        style: { fill: 'rgba(239,83,80,0.2)', stroke: '#ef5350', lineWidth: 1 }
+                    });
+                } else if (zone.color === 'green') {
+                    // 绿色区间
+                    graphics.push({
+                        type: 'rect',
+                        shape: { x: gridRect.x, y: Math.min(y1, y2), width: gridRect.width + vpWidth + 5, height: Math.abs(y2 - y1) || 2 },
+                        style: { fill: 'rgba(38,166,91,0.2)', stroke: '#26a65b', lineWidth: 1 }
+                    });
+                } else {
+                    // 黄色虚线
+                    let midY = (y1 + y2) / 2;
+                    graphics.push({
+                        type: 'line',
+                        shape: { x1: gridRect.x, y1: midY, x2: vpLeft + vpWidth, y2: midY },
+                        style: { stroke: '#ffeb3b', lineWidth: 2, lineDash: [6, 4] }
+                    });
+                }
+            });
+
+            document.getElementById('i-lvn').textContent = allLvnZones.length > 0 ? allLvnZones.map(z => z.priceLow.toFixed(2) + '-' + z.priceHigh.toFixed(2)).join(', ') : '-';
+
+            // 绘制筹码柱
+            vp.centers.forEach((price, i) => {
+                let y = coordSys.dataToPoint([0, price])[1];
+                let upW = vp.normUp[i] / 100 * vpWidth;
+                let dnW = vp.normDn[i] / 100 * vpWidth;
+                let h = gridRect.height / bins * 0.85;
+                if (upW > 0) {
+                    graphics.push({ type: 'rect', shape: { x: vpLeft + vpWidth - upW, y: y - h / 2, width: upW, height: h }, style: { fill: 'rgba(38,198,218,0.85)' } });
+                }
+                if (dnW > 0) {
+                    graphics.push({ type: 'rect', shape: { x: vpLeft + vpWidth - upW - dnW, y: y - h / 2, width: dnW, height: h }, style: { fill: 'rgba(239,83,80,0.85)' } });
+                }
+            });
+
+            // 当前价格白色虚线
+            let currentPriceY = coordSys.dataToPoint([0, currentPrice])[1];
+            graphics.push({
+                type: 'line',
+                shape: { x1: gridRect.x, y1: currentPriceY, x2: vpLeft + vpWidth, y2: currentPriceY },
+                style: { stroke: '#ffffff', lineWidth: 1, lineDash: [2, 2] }
+            });
+
+            chart.setOption({ graphic: graphics }, { replaceMerge: ['graphic'] });
+        }
+
+        document.getElementById('stock-sel').onchange = function () {
+            if (!document.getElementById('lock-range').checked) { zStart = 0; zEnd = 100; }
+            draw();
+        };
+        document.getElementById('bins-sel').onchange = function () { draw(); };
+    </script>
+</body>
+
+</html>
