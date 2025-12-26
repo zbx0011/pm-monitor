@@ -132,13 +132,36 @@ def generate_spread_data(metal='platinum'):
         'min_spread_pct': float(np.min(spreads))
     }
     
-    # 5. 最新数据
-    latest = history[-1] if history else {}
-    latest_gfex = latest.get('gfex_price', 0)
-    latest_gfex_time = latest.get('gfex_time', now_str)
-    latest_cme_usd = float(latest_cme_row['cme_usd'])
-    latest_cme_cny = float(latest_cme_row['cme_cny'])
-    latest_cme_time = cme_df.index[-1].strftime('%Y-%m-%d %H:%M')
+    # 5. 获取最新实时数据（1分钟级别，获取真实最新时间）
+    print("\n正在获取最新实时数据 (1分钟级)...")
+    
+    # 获取广期所最新1分钟数据
+    try:
+        gfex_1m = ak.futures_zh_minute_sina(symbol=config['gfex_main'], period='1')
+        gfex_1m['datetime'] = pd.to_datetime(gfex_1m['datetime'])
+        latest_gfex = float(gfex_1m['close'].iloc[-1])
+        latest_gfex_time = gfex_1m['datetime'].iloc[-1].strftime('%Y-%m-%d %H:%M')
+    except Exception as e:
+        print(f"  广期所1分钟数据获取失败: {e}")
+        latest_gfex = float(gfex_df['gfex_close'].iloc[-1])
+        latest_gfex_time = gfex_df.index[-1].strftime('%Y-%m-%d %H:%M')
+    
+    # 获取CME最新1分钟数据
+    try:
+        cme_1m = tv.get_hist(symbol=config['cme_symbol'], exchange=config['cme_exchange'],
+                            interval=Interval.in_1_minute, n_bars=10)
+        if cme_1m is not None and len(cme_1m) > 0:
+            latest_cme_usd = float(cme_1m['close'].iloc[-1])
+            latest_cme_time = cme_1m.index[-1].strftime('%Y-%m-%d %H:%M')
+        else:
+            latest_cme_usd = float(latest_cme_row['cme_usd'])
+            latest_cme_time = cme_df.index[-1].strftime('%Y-%m-%d %H:%M')
+    except Exception as e:
+        print(f"  CME 1分钟数据获取失败: {e}")
+        latest_cme_usd = float(latest_cme_row['cme_usd'])
+        latest_cme_time = cme_df.index[-1].strftime('%Y-%m-%d %H:%M')
+    
+    latest_cme_cny = (latest_cme_usd * RATE) / OZ_TO_GRAM
     latest_spread = latest_gfex - latest_cme_cny
     latest_spread_pct = (latest_spread / latest_cme_cny) * 100
     
