@@ -1030,8 +1030,14 @@
             <div class="calculator-header">
                 <h2>🧮 套利交易计算器</h2>
                 <div class="calculator-tabs">
-                    <button class="calc-tab" onclick="selectMetal('PT')" id="tab-pt">铂金 PT</button>
-                    <button class="calc-tab active" onclick="selectMetal('PD')" id="tab-pd">钯金 PD</button>
+                    <button class="calc-tab" onclick="selectMetal('PT')" id="tab-pt">
+                        铂金 PT <span id="arb-pt-price"
+                            style="font-size:0.75rem;color:var(--text-muted);margin-left:4px;"></span>
+                    </button>
+                    <button class="calc-tab active" onclick="selectMetal('PD')" id="tab-pd">
+                        钯金 PD <span id="arb-pd-price"
+                            style="font-size:0.75rem;color:var(--text-muted);margin-left:4px;"></span>
+                    </button>
                 </div>
             </div>
 
@@ -3009,6 +3015,16 @@
                     if (ptSpreadPctEl) ptSpreadPctEl.textContent = (data.spread.pt_spread_pct >= 0 ? '+' : '') + data.spread.pt_spread_pct.toFixed(2) + '%';
                     if (pdSpreadEl) pdSpreadEl.textContent = (data.spread.pd_spread >= 0 ? '+' : '') + data.spread.pd_spread.toFixed(2);
                     if (pdSpreadPctEl) pdSpreadPctEl.textContent = (data.spread.pd_spread_pct >= 0 ? '+' : '') + data.spread.pd_spread_pct.toFixed(2) + '%';
+                }
+
+                // 更新套利计算器的品种标签显示价格和时间
+                const arbPtPriceEl = document.getElementById('arb-pt-price');
+                const arbPdPriceEl = document.getElementById('arb-pd-price');
+                if (arbPtPriceEl && data.gfex && data.gfex.pt_price && data.gfex.pt_time) {
+                    arbPtPriceEl.textContent = '¥' + data.gfex.pt_price.toFixed(2) + ' @' + data.gfex.pt_time;
+                }
+                if (arbPdPriceEl && data.gfex && data.gfex.pd_price && data.gfex.pd_time) {
+                    arbPdPriceEl.textContent = '¥' + data.gfex.pd_price.toFixed(2) + ' @' + data.gfex.pd_time;
                 }
 
                 console.log('价格数据已自动更新:', data.update_time);
