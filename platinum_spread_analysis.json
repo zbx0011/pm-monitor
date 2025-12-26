@@ -1,23 +1,23 @@
 {
-  "update_time": "2025-12-26 14:55:21",
+  "update_time": "2025-12-26 15:00:06",
   "contracts": {
     "gfex": "PT2610",
     "cme": "PLV2026",
     "cme_month": "2026年10月"
   },
   "current": {
-    "gfex_price": 709.85,
-    "gfex_time": "2025-12-26 14:42",
+    "gfex_price": 705.3,
+    "gfex_time": "2025-12-26 15:00",
     "cme_usd": 2542.5,
     "cme_cny": 575.4722137380038,
     "cme_time": "2025-12-26 14:32",
-    "spread": 134.37778626199622,
-    "spread_pct": 23.350873083713232,
-    "spread_gfex_pct": 23.350873083713232,
-    "spread_sge_pct": 23.350873083713232
+    "spread": 129.82778626199615,
+    "spread_pct": 22.56021805443817,
+    "spread_gfex_pct": 22.56021805443817,
+    "spread_sge_pct": 22.56021805443817
   },
   "stats_3y_sge": {
-    "avg_spread_pct": 15.734951486347624,
+    "avg_spread_pct": 15.725538926475302,
     "max_spread_pct": 30.303160352803545,
     "min_spread_pct": 11.706222668220121
   },
@@ -1103,15 +1103,15 @@
     },
     {
       "date": "2025-12-26 15:00",
-      "gfex_price": 709.85,
+      "gfex_price": 705.3,
       "gfex_time": "2025-12-26 15:00",
       "cme_usd": 2542.5,
       "cme_cny": 575.4722137380038,
       "cme_time": "2025-12-26 14:00",
-      "spread": 134.37778626199622,
-      "spread_pct": 23.350873083713232,
-      "spread_sge_pct": 23.350873083713232,
-      "spread_gfex_pct": 23.350873083713232,
+      "spread": 129.82778626199615,
+      "spread_pct": 22.56021805443817,
+      "spread_sge_pct": 22.56021805443817,
+      "spread_gfex_pct": 22.56021805443817,
       "has_both": true
     }
   ]

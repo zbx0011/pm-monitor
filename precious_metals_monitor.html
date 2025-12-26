@@ -851,7 +851,8 @@
                     <div class="price-item">
                         <div class="price-label">广期所 PT2610</div>
                         <div class="price-value cny" id="pt-gfex">657.65</div>
-                        <div class="price-sub">元/克</div>
+                        <div class="price-sub">元/克 <span id="pt-update-time"
+                                style="color:var(--text-muted);font-size:0.65rem;"></span></div>
                     </div>
                     <div class="price-item">
                         <div class="price-label">国际价格对比 (USD/oz)</div>
@@ -899,7 +900,8 @@
                     <div class="price-item">
                         <div class="price-label">广期所 PD2606</div>
                         <div class="price-value cny" id="pd-gfex">578.25</div>
-                        <div class="price-sub">元/克</div>
+                        <div class="price-sub">元/克 <span id="pd-update-time"
+                                style="color:var(--text-muted);font-size:0.65rem;"></span></div>
                     </div>
                     <div class="price-item">
                         <div class="price-label">国际价格对比 (USD/oz)</div>
@@ -2952,8 +2954,16 @@
                 if (data.gfex) {
                     const ptGfexEl = document.getElementById('pt-gfex');
                     const pdGfexEl = document.getElementById('pd-gfex');
+                    const ptUpdateTimeEl = document.getElementById('pt-update-time');
+                    const pdUpdateTimeEl = document.getElementById('pd-update-time');
+
                     if (ptGfexEl) ptGfexEl.textContent = data.gfex.pt_price.toFixed(2);
                     if (pdGfexEl) pdGfexEl.textContent = data.gfex.pd_price.toFixed(2);
+
+                    // 统一时间显示（使用数据更新时间）
+                    const updateTime = data.update_time ? '@' + data.update_time : '';
+                    if (ptUpdateTimeEl) ptUpdateTimeEl.textContent = updateTime;
+                    if (pdUpdateTimeEl) pdUpdateTimeEl.textContent = updateTime;
                 }
 
                 if (data.cme) {
