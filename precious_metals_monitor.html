@@ -851,8 +851,7 @@
                     <div class="price-item">
                         <div class="price-label">广期所 PT2610</div>
                         <div class="price-value cny" id="pt-gfex">657.65</div>
-                        <div class="price-sub">元/克 <span id="pt-gfex-time"
-                                style="color:var(--text-muted);font-size:0.7rem;"></span></div>
+                        <div class="price-sub">元/克</div>
                     </div>
                     <div class="price-item">
                         <div class="price-label">国际价格对比 (USD/oz)</div>
@@ -860,8 +859,7 @@
                             style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
                             <span style="font-size: 0.8rem; color: var(--text-muted);">CME <span
                                     id="pt-cme-contract">PLV2026</span></span>
-                            <span class="price-value usd" style="font-size: 1rem;" id="pt-intl-usd">2357.40 <span
-                                    id="pt-cme-time" style="font-size:0.65rem;color:var(--text-muted);"></span></span>
+                            <span class="price-value usd" style="font-size: 1rem;" id="pt-intl-usd">2357.40</span>
                         </div>
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <span style="font-size: 0.8rem; color: var(--text-muted);">Bybit现货</span>
@@ -871,8 +869,6 @@
                         <div class="price-sub"
                             style="margin-top: 6px; text-align: right; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 4px;">
                             CME折算: ¥<span id="pt-intl">533.58</span>/克
-                            <span id="pt-cme-time"
-                                style="display:block;color:var(--text-muted);font-size:0.65rem;"></span>
                         </div>
                     </div>
                 </div>
@@ -903,8 +899,7 @@
                     <div class="price-item">
                         <div class="price-label">广期所 PD2606</div>
                         <div class="price-value cny" id="pd-gfex">578.25</div>
-                        <div class="price-sub">元/克 <span id="pd-gfex-time"
-                                style="color:var(--text-muted);font-size:0.7rem;"></span></div>
+                        <div class="price-sub">元/克</div>
                     </div>
                     <div class="price-item">
                         <div class="price-label">国际价格对比 (USD/oz)</div>
@@ -922,8 +917,6 @@
                         <div class="price-sub"
                             style="margin-top: 6px; text-align: right; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 4px;">
                             CME折算: ¥<span id="pd-intl">435.25</span>/克
-                            <span id="pd-cme-time"
-                                style="display:block;color:var(--text-muted);font-size:0.65rem;"></span>
                         </div>
                     </div>
                 </div>
@@ -2959,13 +2952,8 @@
                 if (data.gfex) {
                     const ptGfexEl = document.getElementById('pt-gfex');
                     const pdGfexEl = document.getElementById('pd-gfex');
-                    const ptGfexTimeEl = document.getElementById('pt-gfex-time');
-                    const pdGfexTimeEl = document.getElementById('pd-gfex-time');
-
                     if (ptGfexEl) ptGfexEl.textContent = data.gfex.pt_price.toFixed(2);
                     if (pdGfexEl) pdGfexEl.textContent = data.gfex.pd_price.toFixed(2);
-                    if (ptGfexTimeEl && data.gfex.pt_time) ptGfexTimeEl.textContent = '@' + data.gfex.pt_time;
-                    if (pdGfexTimeEl && data.gfex.pd_time) pdGfexTimeEl.textContent = '@' + data.gfex.pd_time;
                 }
 
                 if (data.cme) {
@@ -2973,19 +2961,15 @@
                     const pdIntlEl = document.getElementById('pd-intl');
                     const ptIntlUsdEl = document.getElementById('pt-intl-usd');
                     const pdIntlUsdEl = document.getElementById('pd-intl-usd');
-                    const ptCmeTimeEl = document.getElementById('pt-cme-time');
-                    const pdCmeTimeEl = document.getElementById('pd-cme-time');
                     const ptCmeContractEl = document.getElementById('pt-cme-contract');
                     const pdCmeContractEl = document.getElementById('pd-cme-contract');
 
-                    // 显示CME USD价格和时间
+                    // 显示CME USD价格（无独立时间）
                     if (ptIntlUsdEl && data.cme.pt_usd) {
-                        ptIntlUsdEl.innerHTML = data.cme.pt_usd.toFixed(2) +
-                            ' <span style="font-size:0.65rem;color:var(--text-muted);">@' + (data.cme.pt_time || '') + '</span>';
+                        ptIntlUsdEl.textContent = data.cme.pt_usd.toFixed(2);
                     }
                     if (pdIntlUsdEl && data.cme.pd_usd) {
-                        pdIntlUsdEl.innerHTML = data.cme.pd_usd.toFixed(2) +
-                            ' <span style="font-size:0.65rem;color:var(--text-muted);">@' + (data.cme.pd_time || '') + '</span>';
+                        pdIntlUsdEl.textContent = data.cme.pd_usd.toFixed(2);
                     }
 
                     // 显示CME CNY折算价格
