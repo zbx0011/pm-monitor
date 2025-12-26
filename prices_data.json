@@ -1,0 +1,22 @@
+{
+  "update_time": "2025-12-26 14:25:27",
+  "exchange_rate": 7.04,
+  "gfex": {
+    "pt_price": 709.85,
+    "pd_price": 546.45,
+    "pt_time": "14:25",
+    "pd_time": "14:25"
+  },
+  "cme": {
+    "pt_price": 2516.5,
+    "pd_price": 1921.5,
+    "pt_time": "14:25",
+    "pd_time": "14:25"
+  },
+  "spread": {
+    "pt_spread": 140.26265452441044,
+    "pt_spread_pct": 24.62531087436555,
+    "pd_spread": 111.53560129888922,
+    "pd_spread_pct": 25.645414737243637
+  }
+}

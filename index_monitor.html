@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>指数成分股整体压力支撑监控</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #131722;
+            min-height: 100vh;
+            color: #e0e0e0;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 15px;
+        }
+
+        header {
+            text-align: center;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 12px;
+            margin-bottom: 12px;
+        }
+
+        header h1 {
+            font-size: 1.6rem;
+            color: #2962ff;
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 10px;
+        }
+
+        button,
+        .file-label {
+            padding: 8px 20px;
+            background: #2962ff;
+            border: none;
+            border-radius: 6px;
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .file-label {
+            background: #1e222d;
+            border: 1px dashed #363a45;
+            color: #787b86;
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .card {
+            background: #1e222d;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #363a45;
+        }
+
+        .card h3 {
+            color: #787b86;
+            font-size: 0.85rem;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .signal-box {
+            text-align: center;
+            padding: 30px;
+        }
+
+        .signal {
+            font-size: 3rem;
+            font-weight: 700;
+        }
+
+        .signal.bullish {
+            color: #26a65b;
+        }
+
+        .signal.bearish {
+            color: #ef5350;
+        }
+
+        .signal.neutral {
+            color: #ffeb3b;
+        }
+
+        .signal-text {
+            font-size: 1.2rem;
+            margin-top: 10px;
+            color: #d1d4dc;
+        }
+
+        .score-bar {
+            height: 30px;
+            background: #363a45;
+            border-radius: 15px;
+            margin: 10px 0;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .score-fill {
+            height: 100%;
+            border-radius: 15px;
+            transition: width 0.5s;
+        }
+
+        .score-fill.support {
+            background: linear-gradient(90deg, #26a65b, #2ecc71);
+        }
+
+        .score-fill.resistance {
+            background: linear-gradient(90deg, #ef5350, #e74c3c);
+        }
+
+        .score-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+        }
+
+        .score-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            text-align: center;
+            margin: 10px 0;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #2962ff;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: #787b86;
+            margin-top: 5px;
+        }
+
+        #gauge-chart {
+            width: 100%;
+            height: 200px;
+        }
+
+        #dist-chart {
+            width: 100%;
+            height: 200px;
+        }
+
+        .table-container {
+            background: #1e222d;
+            border-radius: 12px;
+            padding: 15px;
+            border: 1px solid #363a45;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        th,
+        td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid #363a45;
+        }
+
+        th {
+            background: #131722;
+            color: #787b86;
+            font-weight: 600;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        th:hover {
+            color: #2962ff;
+        }
+
+        tr:hover {
+            background: rgba(41, 98, 255, 0.1);
+        }
+
+        .price {
+            color: #d1d4dc;
+            font-weight: 600;
+        }
+
+        .up {
+            color: #26a65b;
+        }
+
+        .down {
+            color: #ef5350;
+        }
+
+        .neutral {
+            color: #ffeb3b;
+        }
+
+        .link {
+            color: #2962ff;
+            text-decoration: none;
+        }
+
+        .link:hover {
+            text-decoration: underline;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: #787b86;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 指数成分股整体压力支撑监控</h1>
+        </header>
+
+        <div class="controls">
+            <label class="file-label" for="file-input">📂 加载CSV数据</label>
+            <input type="file" id="file-input" accept=".csv">
+            <button onclick="analyze()">🔍 开始分析</button>
+            <a href="stock_visualization.html" class="file-label" style="text-decoration:none">📈 单股分析</a>
+        </div>
+
+        <div id="result" style="display:none">
+            <div class="dashboard">
+                <!-- 交易信号 -->
+                <div class="card signal-box">
+                    <h3>交易信号</h3>
+                    <div id="signal" class="signal neutral">—</div>
+                    <div id="signal-text" class="signal-text">请加载数据</div>
+                </div>
+
+                <!-- 压力支撑对比 -->
+                <div class="card">
+                    <h3>压力支撑评分</h3>
+                    <div class="score-label"><span>支撑强度</span><span id="support-score">0</span></div>
+                    <div class="score-bar">
+                        <div id="support-bar" class="score-fill support" style="width:0%"></div>
+                    </div>
+                    <div class="score-label"><span>压力强度</span><span id="resistance-score">0</span></div>
+                    <div class="score-bar">
+                        <div id="resistance-bar" class="score-fill resistance" style="width:0%"></div>
+                    </div>
+                </div>
+
+                <!-- 统计概览 -->
+                <div class="card">
+                    <h3>统计概览</h3>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div id="stat-total" class="stat-value">0</div>
+                            <div class="stat-label">股票总数</div>
+                        </div>
+                        <div class="stat-item">
+                            <div id="stat-near-support" class="stat-value up">0</div>
+                            <div class="stat-label">接近支撑</div>
+                        </div>
+                        <div class="stat-item">
+                            <div id="stat-near-resistance" class="stat-value down">0</div>
+                            <div class="stat-label">接近压力</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 仪表盘 -->
+                <div class="card">
+                    <h3>多空力量对比</h3>
+                    <div id="gauge-chart"></div>
+                </div>
+
+                <!-- 分布图 -->
+                <div class="card">
+                    <h3>距离分布</h3>
+                    <div id="dist-chart"></div>
+                </div>
+            </div>
+
+            <!-- 详情表格 -->
+            <div class="table-container">
+                <table id="stock-table">
+                    <thead>
+                        <tr>
+                            <th onclick="sortTable(0)">股票代码 ↕</th>
+                            <th onclick="sortTable(1)">股票名称 ↕</th>
+                            <th onclick="sortTable(2)">现价 ↕</th>
+                            <th onclick="sortTable(3)">评分 ↕</th>
+                            <th onclick="sortTable(4)">压力区间 ↕</th>
+                            <th onclick="sortTable(5)">压力距离% ↕</th>
+                            <th onclick="sortTable(6)">支撑区间 ↕</th>
+                            <th onclick="sortTable(7)">支撑距离% ↕</th>
+                            <th onclick="sortTable(8)">状态 ↕</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="loading" class="loading" style="display:none">正在分析中...</div>
+    </div>
+
+    <script>
+        let rawData = [], stocks = [], stockResults = [];
+        let gaugeChart = null, distChart = null;
+
+        document.getElementById('file-input').onchange = function (e) {
+            let f = e.target.files[0];
+            if (!f) return;
+            document.getElementById('loading').style.display = 'block';
+            Papa.parse(f, {
+                header: true,
+                complete: function (r) {
+                    rawData = r.data.filter(x => x.date && x.close);
+                    let m = new Map();
+                    rawData.forEach(x => { if (x['股票代码'] && x['股票名称']) m.set(x['股票代码'], x['股票名称']); });
+                    stocks = Array.from(m.entries());
+                    document.getElementById('loading').style.display = 'none';
+                    alert('已加载 ' + stocks.length + ' 只股票数据');
+                }
+            });
+        };
+
+        // LVN识别算法（与单股分析页面一致）
+        function findAllLVNZones(total, centers, maxVol, binSz) {
+            let n = total.length;
+            if (n < 5) return [];
+            let zones = [];
+
+            // 方法1: 局部极小值
+            let windowSize = 3;
+            for (let i = windowSize; i < n - windowSize; i++) {
+                let current = total[i];
+                let leftMax = Math.max(...total.slice(Math.max(0, i - windowSize), i));
+                let rightMax = Math.max(...total.slice(i + 1, Math.min(n, i + windowSize + 1)));
+                let isLocalMin = current < leftMax * 0.7 && current < rightMax * 0.7;
+                let isBelowThreshold = current < maxVol * 0.6;
+                if (isLocalMin && isBelowThreshold) {
+                    let start = i, end = i;
+                    while (start > 0 && total[start - 1] <= total[start] * 1.3 && total[start - 1] < maxVol * 0.6) start--;
+                    while (end < n - 1 && total[end + 1] <= total[end] * 1.3 && total[end + 1] < maxVol * 0.6) end++;
+                    let overlap = zones.some(z => !(end < z.startIdx || start > z.endIdx));
+                    if (!overlap) zones.push({ startIdx: start, endIdx: end, priceHigh: centers[start] + binSz / 2, priceLow: centers[end] - binSz / 2 });
+                }
+            }
+
+            // 方法2: 连续低成交量
+            let threshold50 = maxVol * 0.5;
+            let i = 0;
+            while (i < n) {
+                if (total[i] < threshold50) {
+                    let start = i;
+                    while (i < n && total[i] < threshold50) i++;
+                    let end = i - 1;
+                    if (end - start >= 2) {
+                        let overlap = zones.some(z => !(end < z.startIdx || start > z.endIdx));
+                        if (!overlap) zones.push({ startIdx: start, endIdx: end, priceHigh: centers[start] + binSz / 2, priceLow: centers[end] - binSz / 2 });
+                    }
+                } else { i++; }
+            }
+
+            // 最终过滤
+            zones = zones.filter(z => {
+                let sum = 0;
+                for (let i = z.startIdx; i <= z.endIdx; i++) sum += total[i];
+                let avgVol = sum / (z.endIdx - z.startIdx + 1);
+                return avgVol < maxVol * 0.55;
+            });
+
+            zones.sort((a, b) => a.startIdx - b.startIdx);
+            return zones;
+        }
+
+        function calcVP(data, bins, yMin, yMax) {
+            if (!data.length || yMin >= yMax) return null;
+            let binSz = (yMax - yMin) / bins;
+            let profUp = Array(bins).fill(0), profDn = Array(bins).fill(0), centers = [];
+            for (let i = 0; i < bins; i++) centers.push(yMin + binSz * (i + 0.5));
+            data.forEach(x => {
+                let o = +x.open, c = +x.close, h = +x.high, l = +x.low, v = +x.volume || 0;
+                if (v === 0 || h <= l) return;
+                let isUp = c >= o;
+                for (let i = 0; i < bins; i++) {
+                    let bL = yMin + binSz * i, bH = yMin + binSz * (i + 1);
+                    let oL = Math.max(l, bL), oH = Math.min(h, bH);
+                    if (oH > oL) {
+                        let vol = v * (oH - oL) / (h - l);
+                        if (isUp) profUp[i] += vol; else profDn[i] += vol;
+                    }
+                }
+            });
+            let total = profUp.map((u, i) => u + profDn[i]);
+            let mx = Math.max(...total);
+            return { centers, total, mx, binSz };
+        }
+
+        function analyzeStock(code) {
+            let data = rawData.filter(x => x['股票代码'] === code);
+            if (data.length < 30) return null; // 需要足够数据计算MA28
+
+            let yMin = Math.min(...data.map(x => +x.low)) * 0.98;
+            let yMax = Math.max(...data.map(x => +x.high)) * 1.02;
+            let vp = calcVP(data, 60, yMin, yMax);
+            if (!vp) return null;
+
+            let zones = findAllLVNZones(vp.total, vp.centers, vp.mx, vp.binSz);
+            let currentPrice = +data[data.length - 1].close;
+            let currentHigh = +data[data.length - 1].high;
+            let currentLow = +data[data.length - 1].low;
+            let currentVol = +data[data.length - 1].volume;
+
+            // 计算MA28成交量
+            let vol28 = data.slice(-28).reduce((s, x) => s + (+x.volume || 0), 0) / 28;
+
+            // 计算VP平均值
+            let vpAvg = vp.total.reduce((s, v) => s + v, 0) / vp.total.length;
+
+            // 获取最近5天数据
+            let recent5 = data.slice(-5);
+            let price5DaysAgo = +data[data.length - 5]?.close || currentPrice;
+            let price3DaysAgo = +data[data.length - 3]?.close || currentPrice; // 用于判断压力/支撑区间
+
+            // ============ 新评分系统 ============
+            // 规则：K线不触及任何区间 = 评分为0
+            // K线触及压力区间 = 正数，触及支撑区间 = 负数
+
+            let score = 0;
+            let inZone = null;
+            let zoneType = null; // 'resistance' or 'support'
+
+            // 检查K线是否触及某个区间（使用最高价和最低价）
+            for (let z of zones) {
+                // K线触及区间 = 最高价>=区间下沿 且 最低价<=区间上沿
+                if (currentHigh >= z.priceLow && currentLow <= z.priceHigh) {
+                    inZone = z;
+                    break;
+                }
+            }
+
+            // 确定区间类型（压力还是支撑）
+            // 根据K线进入方向判断：从下往上进入=压力区间，从上往下进入=支撑区间
+            if (inZone) {
+                // 判断进入方向：看5天前价格
+                if (price5DaysAgo < inZone.priceLow) {
+                    zoneType = 'resistance'; // 从下往上进入=压力
+                } else if (price5DaysAgo > inZone.priceHigh) {
+                    zoneType = 'support'; // 从上往下进入=支撑
+                } else {
+                    // 5天前就在区间内，看更早的价格
+                    let earlierPrice = +data[Math.max(0, data.length - 10)]?.close || currentPrice;
+                    zoneType = earlierPrice < inZone.priceLow ? 'resistance' : 'support';
+                }
+
+                // ============ 计算区间力度 ============
+                // 力度 = 100 × (1 - VP/平均VP) × 时间衰减 × 触及衰减
+
+                // 1. VP越小力度越强
+                let zoneVpSum = 0;
+                for (let i = inZone.startIdx; i <= inZone.endIdx; i++) {
+                    zoneVpSum += vp.total[i];
+                }
+                let zoneVpAvg = zoneVpSum / (inZone.endIdx - inZone.startIdx + 1);
+                let vpStrength = Math.max(0, 1 - zoneVpAvg / vpAvg);
+
+                // 2. 时间衰减：找到该区间最近的形成时间
+                // 简化：假设低量能区是最近才形成的有效区域
+                let daysSinceFormed = 30; // 默认30天
+                for (let i = data.length - 1; i >= Math.max(0, data.length - 180); i--) {
+                    let d = data[i];
+                    if (+d.high >= inZone.priceLow && +d.low <= inZone.priceHigh) {
+                        daysSinceFormed = data.length - 1 - i;
+                        break;
+                    }
+                }
+                let timeDecay = Math.pow(0.5, daysSinceFormed / 180);
+
+                // 3. 触及次数衰减
+                let touchCount = 0;
+                for (let d of data) {
+                    if (+d.high >= inZone.priceLow && +d.low <= inZone.priceHigh) {
+                        touchCount++;
+                    }
+                }
+                let touchDecay = Math.pow(0.9, touchCount);
+
+                // 基础力度
+                let baseStrength = 100 * vpStrength * timeDecay * touchDecay;
+
+                // ============ K线运动调整 ============
+
+                // 1. 快速接近加分
+                let dist5DaysAgo = Math.abs(price5DaysAgo - (inZone.priceLow + inZone.priceHigh) / 2) / price5DaysAgo * 100;
+                let rushBonus = 0;
+                if (dist5DaysAgo < 2) rushBonus = 0;
+                else if (dist5DaysAgo < 3) rushBonus = 0.1;
+                else if (dist5DaysAgo < 5) rushBonus = 0.2;
+                else if (dist5DaysAgo < 8) rushBonus = 0.35;
+                else if (dist5DaysAgo < 10) rushBonus = 0.5;
+                else rushBonus = 0.7;
+
+                // 2. 徘徊衰减
+                let daysInZone = 0;
+                for (let d of recent5) {
+                    if (+d.high >= inZone.priceLow && +d.low <= inZone.priceHigh) {
+                        daysInZone++;
+                    }
+                }
+                let lingerDecay = daysInZone >= 3 ? 0.5 : 0;
+
+                // 3. 上影放量加分（仅对压力区间有效）
+                let shadowVolumeBonus = 0;
+                if (zoneType === 'resistance') {
+                    // 当日最高在区间内或上方，收盘低于区间，放量
+                    if (currentHigh >= inZone.priceLow && currentPrice < inZone.priceLow && currentVol > vol28) {
+                        shadowVolumeBonus = 0.3;
+                    }
+                }
+
+                // 最终分数
+                let adjustment = 1 + rushBonus - lingerDecay + shadowVolumeBonus;
+                score = baseStrength * adjustment;
+
+                // 方向：压力为正，支撑为负
+                if (zoneType === 'support') {
+                    score = -score;
+                }
+
+                // 限制范围
+                score = Math.max(-100, Math.min(100, score));
+            }
+
+            // 找最近的压力位和支撑位（用于表格显示）
+            // 使用3天前收盘价作为基准判断，避免当天触及后区间消失
+            let supports = zones.filter(z => z.priceHigh < price3DaysAgo);  // 支撑：低于3天前价格
+            let pressures = zones.filter(z => z.priceLow > price3DaysAgo);  // 压力：高于3天前价格
+
+            let nearestResistance = pressures.length > 0 ?
+                pressures.reduce((a, b) => (a.priceLow < b.priceLow ? a : b)) : null;
+            let nearestSupport = supports.length > 0 ?
+                supports.reduce((a, b) => (a.priceHigh > b.priceHigh ? a : b)) : null;
+
+            // 使用区间中点计算距离
+            let resistancePrice = nearestResistance ? (nearestResistance.priceLow + nearestResistance.priceHigh) / 2 : null;
+            let supportPrice = nearestSupport ? (nearestSupport.priceLow + nearestSupport.priceHigh) / 2 : null;
+
+            let resistanceDist = resistancePrice ? ((resistancePrice - currentPrice) / currentPrice * 100) : null;
+            let supportDist = supportPrice ? ((currentPrice - supportPrice) / currentPrice * 100) : null;
+
+            return {
+                code: code,
+                name: stocks.find(s => s[0] === code)?.[1] || code,
+                currentPrice: currentPrice,
+                // 压力区间信息
+                resistanceLow: nearestResistance?.priceLow || null,
+                resistanceHigh: nearestResistance?.priceHigh || null,
+                resistanceDist: resistanceDist,
+                // 支撑区间信息
+                supportLow: nearestSupport?.priceLow || null,
+                supportHigh: nearestSupport?.priceHigh || null,
+                supportDist: supportDist,
+                inZone: inZone !== null,
+                zoneType: zoneType,
+                score: score,
+                resistanceCount: pressures.length,
+                supportCount: supports.length
+            };
+        }
+
+        // 距离衰减函数 - 类似期权Gamma效应
+        // 越接近关键位，力度越大（非线性增长）
+        // 使用指数衰减: weight = e^(-k*dist)
+        // 当dist=0时，weight=1（最大力度）
+        // 当dist趋向无穷时，weight趋向0
+        function getDistanceWeight(dist) {
+            if (dist === null || dist < 0) return 0;
+
+            // 衰减系数k，控制衰减速度
+            // k越大，远距离衰减越快
+            const k = 0.3;
+
+            // 指数衰减
+            let weight = Math.exp(-k * dist);
+
+            // 距离<1%时额外加成（类似ITM期权的Delta接近1）
+            if (dist < 1) {
+                weight *= 1.5;  // 50%加成
+            } else if (dist < 2) {
+                weight *= 1.2;  // 20%加成
+            }
+
+            return weight;
+        }
+
+        function analyze() {
+            if (stocks.length === 0) {
+                alert('请先加载CSV数据');
+                return;
+            }
+
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('result').style.display = 'none';
+
+            setTimeout(() => {
+                stockResults = [];
+                stocks.forEach(([code, name]) => {
+                    let result = analyzeStock(code);
+                    if (result) stockResults.push(result);
+                });
+
+                // 汇总计算 - 使用综合评分
+                let totalScore = 0;
+                let nearSupportCount = 0, nearResistanceCount = 0;
+                let bullishCount = 0, bearishCount = 0;
+
+                stockResults.forEach(r => {
+                    totalScore += r.score;
+                    if (r.score < -10) bullishCount++;
+                    else if (r.score > 10) bearishCount++;
+
+                    if (r.supportDist !== null && r.supportDist < 5) nearSupportCount++;
+                    if (r.resistanceDist !== null && r.resistanceDist < 5) nearResistanceCount++;
+                });
+
+                let avgScore = stockResults.length > 0 ? totalScore / stockResults.length : 0;
+
+                // 计算压力和支撑的平均力度（用于显示）
+                let avgSupportScore = stockResults.length > 0 ?
+                    (stockResults.reduce((s, r) => s + (r.score < 0 ? Math.abs(r.score) : 0), 0) / stockResults.length).toFixed(1) : 0;
+                let avgResistanceScore = stockResults.length > 0 ?
+                    (stockResults.reduce((s, r) => s + (r.score > 0 ? r.score : 0), 0) / stockResults.length).toFixed(1) : 0;
+
+                // 更新UI
+                document.getElementById('support-score').textContent = avgSupportScore;
+                document.getElementById('resistance-score').textContent = avgResistanceScore;
+                document.getElementById('support-bar').style.width = Math.min(avgSupportScore, 100) + '%';
+                document.getElementById('resistance-bar').style.width = Math.min(avgResistanceScore, 100) + '%';
+
+                document.getElementById('stat-total').textContent = stockResults.length;
+                document.getElementById('stat-near-support').textContent = nearSupportCount + ' (' + bullishCount + '偏多)';
+                document.getElementById('stat-near-resistance').textContent = nearResistanceCount + ' (' + bearishCount + '偏空)';
+
+                // 交易信号 - 基于平均评分
+                let signalEl = document.getElementById('signal');
+                let signalTextEl = document.getElementById('signal-text');
+
+                if (avgScore < -5) {
+                    signalEl.textContent = '🟢';
+                    signalEl.className = 'signal bullish';
+                    signalTextEl.textContent = '偏多 (整体评分: ' + avgScore.toFixed(1) + ')';
+                } else if (avgScore > 5) {
+                    signalEl.textContent = '🔴';
+                    signalEl.className = 'signal bearish';
+                    signalTextEl.textContent = '偏空 (整体评分: +' + avgScore.toFixed(1) + ')';
+                } else {
+                    signalEl.textContent = '🟡';
+                    signalEl.className = 'signal neutral';
+                    signalTextEl.textContent = '观望 (整体评分: ' + (avgScore > 0 ? '+' : '') + avgScore.toFixed(1) + ')';
+                }
+
+                // 渲染表格
+                renderTable();
+
+                // 渲染图表
+                renderGauge(avgSupportScore, avgResistanceScore);
+                renderDistChart();
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('result').style.display = 'block';
+            }, 100);
+        }
+
+        function renderTable() {
+            let tbody = document.getElementById('table-body');
+            tbody.innerHTML = stockResults.map(r => {
+                // 状态显示
+                let status = '', statusClass = 'neutral';
+                if (r.inZone) {
+                    if (r.zoneType === 'resistance') {
+                        status = '🔴 在压力区'; statusClass = 'down';
+                    } else {
+                        status = '🟢 在支撑区'; statusClass = 'up';
+                    }
+                } else {
+                    status = '正常';
+                }
+
+                // 评分颜色
+                let scoreClass = r.score > 10 ? 'down' : (r.score < -10 ? 'up' : 'neutral');
+                let scoreDisplay = r.score === 0 ? '0' : ((r.score > 0 ? '+' : '') + r.score.toFixed(1));
+
+                // 区间显示格式
+                let resistanceZone = r.resistanceLow ? `${r.resistanceLow.toFixed(2)}-${r.resistanceHigh.toFixed(2)}` : '-';
+                let supportZone = r.supportLow ? `${r.supportLow.toFixed(2)}-${r.supportHigh.toFixed(2)}` : '-';
+
+                return `<tr>
+                    <td><a href="stock_visualization.html?code=${r.code}" class="link">${r.code}</a></td>
+                    <td>${r.name}</td>
+                    <td class="price">${r.currentPrice.toFixed(2)}</td>
+                    <td class="${scoreClass}" style="font-weight:bold">${scoreDisplay}</td>
+                    <td>${resistanceZone}</td>
+                    <td class="${r.resistanceDist && r.resistanceDist < 5 ? 'down' : ''}">${r.resistanceDist !== null ? '+' + r.resistanceDist.toFixed(1) + '%' : '-'}</td>
+                    <td>${supportZone}</td>
+                    <td class="${r.supportDist && r.supportDist < 5 ? 'up' : ''}">${r.supportDist !== null ? '-' + r.supportDist.toFixed(1) + '%' : '-'}</td>
+                    <td class="${statusClass}">${status}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        let sortDir = 1;
+        function sortTable(col) {
+            sortDir *= -1;
+            stockResults.sort((a, b) => {
+                let va, vb;
+                switch (col) {
+                    case 0: va = a.code; vb = b.code; break;
+                    case 1: va = a.name; vb = b.name; break;
+                    case 2: va = a.currentPrice; vb = b.currentPrice; break;
+                    case 3: va = a.score; vb = b.score; break;  // 评分
+                    case 4: va = a.resistancePrice || 9999; vb = b.resistancePrice || 9999; break;
+                    case 5: va = a.resistanceDist || 9999; vb = b.resistanceDist || 9999; break;
+                    case 6: va = a.supportPrice || 0; vb = b.supportPrice || 0; break;
+                    case 7: va = a.supportDist || 9999; vb = b.supportDist || 9999; break;
+                    case 8: va = a.supportDist || 9999; vb = b.supportDist || 9999; break;
+                }
+                if (typeof va === 'string') return va.localeCompare(vb) * sortDir;
+                return (va - vb) * sortDir;
+            });
+            renderTable();
+        }
+
+        function renderGauge(support, resistance) {
+            if (!gaugeChart) gaugeChart = echarts.init(document.getElementById('gauge-chart'));
+            let value = support - resistance;
+            gaugeChart.setOption({
+                backgroundColor: 'transparent',
+                series: [{
+                    type: 'gauge',
+                    min: -100, max: 100,
+                    splitNumber: 10,
+                    axisLine: {
+                        lineStyle: {
+                            width: 20,
+                            color: [[0.3, '#ef5350'], [0.5, '#ffeb3b'], [0.7, '#ffeb3b'], [1, '#26a65b']]
+                        }
+                    },
+                    pointer: { itemStyle: { color: '#fff' }, width: 5 },
+                    axisTick: { show: false },
+                    splitLine: { length: 10, lineStyle: { color: '#363a45' } },
+                    axisLabel: { color: '#787b86', fontSize: 10 },
+                    detail: { valueAnimation: true, formatter: '{value}', color: '#fff', fontSize: 20, offsetCenter: [0, '70%'] },
+                    data: [{ value: value.toFixed(0) }]
+                }]
+            });
+        }
+
+        function renderDistChart() {
+            if (!distChart) distChart = echarts.init(document.getElementById('dist-chart'));
+            let supportDists = stockResults.filter(r => r.supportDist !== null).map(r => r.supportDist);
+            let resistanceDists = stockResults.filter(r => r.resistanceDist !== null).map(r => r.resistanceDist);
+
+            let bins = ['<3%', '3-5%', '5-10%', '>10%'];
+            let supportCounts = [0, 0, 0, 0], resistanceCounts = [0, 0, 0, 0];
+
+            supportDists.forEach(d => {
+                if (d < 3) supportCounts[0]++;
+                else if (d < 5) supportCounts[1]++;
+                else if (d < 10) supportCounts[2]++;
+                else supportCounts[3]++;
+            });
+            resistanceDists.forEach(d => {
+                if (d < 3) resistanceCounts[0]++;
+                else if (d < 5) resistanceCounts[1]++;
+                else if (d < 10) resistanceCounts[2]++;
+                else resistanceCounts[3]++;
+            });
+
+            distChart.setOption({
+                backgroundColor: 'transparent',
+                tooltip: { trigger: 'axis' },
+                legend: { data: ['支撑距离', '压力距离'], textStyle: { color: '#787b86' } },
+                grid: { left: 40, right: 10, top: 40, bottom: 30 },
+                xAxis: { type: 'category', data: bins, axisLabel: { color: '#787b86' }, axisLine: { lineStyle: { color: '#363a45' } } },
+                yAxis: { type: 'value', axisLabel: { color: '#787b86' }, splitLine: { lineStyle: { color: '#1e222d' } } },
+                series: [
+                    { name: '支撑距离', type: 'bar', data: supportCounts, itemStyle: { color: '#26a65b' } },
+                    { name: '压力距离', type: 'bar', data: resistanceCounts, itemStyle: { color: '#ef5350' } }
+                ]
+            });
+        }
+
+        window.onresize = function () {
+            if (gaugeChart) gaugeChart.resize();
+            if (distChart) distChart.resize();
+        };
+    </script>
+</body>
+
+</html>
