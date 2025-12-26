@@ -860,12 +860,14 @@
                             style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
                             <span style="font-size: 0.8rem; color: var(--text-muted);">CME <span
                                     id="pt-cme-contract">PLV2026</span></span>
-                            <span class="price-value usd" style="font-size: 1rem;" id="pt-intl-usd">2357.40</span>
+                            <span class="price-value usd" style="font-size: 1rem;" id="pt-intl-usd">2357.40 <span
+                                    id="pt-cme-time" style="font-size:0.6rem;color:var(--text-muted);"></span></span>
                         </div>
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <span style="font-size: 0.8rem; color: var(--text-muted);">Bybit现货</span>
                             <span class="price-value usd" style="font-size: 1rem; color: var(--text-secondary);"
-                                id="pt-spot-usd-display">2350.00</span>
+                                id="pt-spot-usd-display">2350.00 <span id="pt-bybit-time"
+                                    style="font-size:0.6rem;color:var(--text-muted);"></span></span>
                         </div>
                         <div class="price-sub"
                             style="margin-top: 6px; text-align: right; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 4px;">
@@ -909,12 +911,14 @@
                             style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
                             <span style="font-size: 0.8rem; color: var(--text-muted);">CME <span
                                     id="pd-cme-contract">PAM2026</span></span>
-                            <span class="price-value usd" style="font-size: 1rem;" id="pd-intl-usd">1923.00</span>
+                            <span class="price-value usd" style="font-size: 1rem;" id="pd-intl-usd">1923.00 <span
+                                    id="pd-cme-time" style="font-size:0.6rem;color:var(--text-muted);"></span></span>
                         </div>
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <span style="font-size: 0.8rem; color: var(--text-muted);">Bybit现货</span>
                             <span class="price-value usd" style="font-size: 1rem; color: var(--text-secondary);"
-                                id="pd-spot-usd-display">1915.00</span>
+                                id="pd-spot-usd-display">1915.00 <span id="pd-bybit-time"
+                                    style="font-size:0.6rem;color:var(--text-muted);"></span></span>
                         </div>
                         <div class="price-sub"
                             style="margin-top: 6px; text-align: right; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 4px;">
@@ -1011,7 +1015,14 @@
             </div>
             <!-- 合约选择按钮 -->
             <div id="convergence-tabs" style="display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap;">
-                <!-- 动态生成 -->
+                <!-- 铂金钯金 -->
+                <button onclick="loadConvergenceChart('PT2610')" class="convergence-tab"
+                    style="padding: 6px 12px; border: 1px solid var(--accent-gold); border-radius: 6px; cursor: pointer; font-size: 0.75rem; background: var(--accent-gold); color: #000;">PT2610
+                    (PLV2026)</button>
+                <button onclick="loadConvergenceChart('PD2606')" class="convergence-tab"
+                    style="padding: 6px 12px; border: 1px solid var(--text-muted); border-radius: 6px; cursor: pointer; font-size: 0.75rem; background: transparent; color: var(--text-muted);">PD2606
+                    (PAM2026)</button>
+                <!-- 黄金白银 (动态生成) -->
             </div>
             <div id="convergence-chart" style="width: 100%; height: 400px;"></div>
             <div id="convergence-stats"
@@ -2973,13 +2984,17 @@
                     const pdIntlUsdEl = document.getElementById('pd-intl-usd');
                     const ptCmeContractEl = document.getElementById('pt-cme-contract');
                     const pdCmeContractEl = document.getElementById('pd-cme-contract');
+                    const ptCmeTimeEl = document.getElementById('pt-cme-time');
+                    const pdCmeTimeEl = document.getElementById('pd-cme-time');
 
-                    // 显示CME USD价格（无独立时间）
+                    // 显示CME USD价格和时间
                     if (ptIntlUsdEl && data.cme.pt_usd) {
-                        ptIntlUsdEl.textContent = data.cme.pt_usd.toFixed(2);
+                        ptIntlUsdEl.innerHTML = data.cme.pt_usd.toFixed(2) +
+                            ' <span id="pt-cme-time" style="font-size:0.6rem;color:var(--text-muted);">@' + (data.cme.pt_time || '') + '</span>';
                     }
                     if (pdIntlUsdEl && data.cme.pd_usd) {
-                        pdIntlUsdEl.textContent = data.cme.pd_usd.toFixed(2);
+                        pdIntlUsdEl.innerHTML = data.cme.pd_usd.toFixed(2) +
+                            ' <span id="pd-cme-time" style="font-size:0.6rem;color:var(--text-muted);">@' + (data.cme.pd_time || '') + '</span>';
                     }
 
                     // 显示CME CNY折算价格
