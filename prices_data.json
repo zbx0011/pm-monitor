@@ -1,22 +1,28 @@
 {
-  "update_time": "2025-12-26 14:25:27",
+  "update_time": "2025-12-26 14:36:20",
   "exchange_rate": 7.04,
   "gfex": {
     "pt_price": 709.85,
-    "pd_price": 546.45,
-    "pt_time": "14:25",
-    "pd_time": "14:25"
+    "pt_time": "14:36",
+    "pd_price": 547.25,
+    "pd_time": "14:36"
   },
   "cme": {
-    "pt_price": 2516.5,
-    "pd_price": 1921.5,
-    "pt_time": "14:25",
-    "pd_time": "14:25"
+    "pt_usd": 2516.5,
+    "pt_cny": 569.5873454755896,
+    "pt_time": "14:03",
+    "pt_contract": "PLV2026",
+    "pt_month": "2026年10月",
+    "pd_usd": 1936.5,
+    "pd_cny": 438.3095150063498,
+    "pd_time": "14:24",
+    "pd_contract": "PAM2026",
+    "pd_month": "2026年6月"
   },
   "spread": {
     "pt_spread": 140.26265452441044,
     "pt_spread_pct": 24.62531087436555,
-    "pd_spread": 111.53560129888922,
-    "pd_spread_pct": 25.645414737243637
+    "pd_spread": 108.94048499365022,
+    "pd_spread_pct": 24.85469314807642
   }
 }

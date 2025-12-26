@@ -842,7 +842,7 @@
                         <div class="card-icon platinum">Pt</div>
                         <div>
                             <h3>铂金 Platinum</h3>
-                            <span>PT2610 | XPT/USD</span>
+                            <span id="pt-contract-info">PT2610 | PLV2026 (2026年10月)</span>
                         </div>
                     </div>
                 </div>
@@ -858,8 +858,10 @@
                         <div class="price-label">国际价格对比 (USD/oz)</div>
                         <div
                             style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                            <span style="font-size: 0.8rem; color: var(--text-muted);">CME期货</span>
-                            <span class="price-value usd" style="font-size: 1rem;" id="pt-intl-usd">2357.40</span>
+                            <span style="font-size: 0.8rem; color: var(--text-muted);">CME <span
+                                    id="pt-cme-contract">PLV2026</span></span>
+                            <span class="price-value usd" style="font-size: 1rem;" id="pt-intl-usd">2357.40 <span
+                                    id="pt-cme-time" style="font-size:0.65rem;color:var(--text-muted);"></span></span>
                         </div>
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <span style="font-size: 0.8rem; color: var(--text-muted);">Bybit现货</span>
@@ -892,14 +894,14 @@
                         <div class="card-icon palladium">Pd</div>
                         <div>
                             <h3>钯金 Palladium</h3>
-                            <span>PD2608 | XPD/USD</span>
+                            <span id="pd-contract-info">PD2606 | PAM2026 (2026年6月)</span>
                         </div>
                     </div>
                 </div>
 
                 <div class="price-grid">
                     <div class="price-item">
-                        <div class="price-label">广期所 PD2608</div>
+                        <div class="price-label">广期所 PD2606</div>
                         <div class="price-value cny" id="pd-gfex">578.25</div>
                         <div class="price-sub">元/克 <span id="pd-gfex-time"
                                 style="color:var(--text-muted);font-size:0.7rem;"></span></div>
@@ -908,7 +910,8 @@
                         <div class="price-label">国际价格对比 (USD/oz)</div>
                         <div
                             style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                            <span style="font-size: 0.8rem; color: var(--text-muted);">CME期货</span>
+                            <span style="font-size: 0.8rem; color: var(--text-muted);">CME <span
+                                    id="pd-cme-contract">PAM2026</span></span>
                             <span class="price-value usd" style="font-size: 1rem;" id="pd-intl-usd">1923.00</span>
                         </div>
                         <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -2950,20 +2953,49 @@
                 if (data.gfex) {
                     const ptGfexEl = document.getElementById('pt-gfex');
                     const pdGfexEl = document.getElementById('pd-gfex');
+                    const ptGfexTimeEl = document.getElementById('pt-gfex-time');
+                    const pdGfexTimeEl = document.getElementById('pd-gfex-time');
+
                     if (ptGfexEl) ptGfexEl.textContent = data.gfex.pt_price.toFixed(2);
                     if (pdGfexEl) pdGfexEl.textContent = data.gfex.pd_price.toFixed(2);
+                    if (ptGfexTimeEl && data.gfex.pt_time) ptGfexTimeEl.textContent = '@' + data.gfex.pt_time;
+                    if (pdGfexTimeEl && data.gfex.pd_time) pdGfexTimeEl.textContent = '@' + data.gfex.pd_time;
                 }
 
                 if (data.cme) {
                     const ptIntlEl = document.getElementById('pt-intl');
                     const pdIntlEl = document.getElementById('pd-intl');
-                    if (ptIntlEl && data.cme.pt_price && data.exchange_rate) {
-                        const ptCny = (data.cme.pt_price * data.exchange_rate) / 31.1035;
-                        ptIntlEl.textContent = ptCny.toFixed(2);
+                    const ptIntlUsdEl = document.getElementById('pt-intl-usd');
+                    const pdIntlUsdEl = document.getElementById('pd-intl-usd');
+                    const ptCmeTimeEl = document.getElementById('pt-cme-time');
+                    const pdCmeTimeEl = document.getElementById('pd-cme-time');
+                    const ptCmeContractEl = document.getElementById('pt-cme-contract');
+                    const pdCmeContractEl = document.getElementById('pd-cme-contract');
+
+                    // 显示CME USD价格和时间
+                    if (ptIntlUsdEl && data.cme.pt_usd) {
+                        ptIntlUsdEl.innerHTML = data.cme.pt_usd.toFixed(2) +
+                            ' <span style="font-size:0.65rem;color:var(--text-muted);">@' + (data.cme.pt_time || '') + '</span>';
                     }
-                    if (pdIntlEl && data.cme.pd_price && data.exchange_rate) {
-                        const pdCny = (data.cme.pd_price * data.exchange_rate) / 31.1035;
-                        pdIntlEl.textContent = pdCny.toFixed(2);
+                    if (pdIntlUsdEl && data.cme.pd_usd) {
+                        pdIntlUsdEl.innerHTML = data.cme.pd_usd.toFixed(2) +
+                            ' <span style="font-size:0.65rem;color:var(--text-muted);">@' + (data.cme.pd_time || '') + '</span>';
+                    }
+
+                    // 显示CME CNY折算价格
+                    if (ptIntlEl && data.cme.pt_cny) {
+                        ptIntlEl.textContent = data.cme.pt_cny.toFixed(2);
+                    }
+                    if (pdIntlEl && data.cme.pd_cny) {
+                        pdIntlEl.textContent = data.cme.pd_cny.toFixed(2);
+                    }
+
+                    // 显示合约信息
+                    if (ptCmeContractEl && data.cme.pt_contract) {
+                        ptCmeContractEl.textContent = data.cme.pt_contract;
+                    }
+                    if (pdCmeContractEl && data.cme.pd_contract) {
+                        pdCmeContractEl.textContent = data.cme.pd_contract;
                     }
                 }
 
