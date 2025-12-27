@@ -69,6 +69,39 @@ def init_database():
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+
+    # 广期所钯金各月份合约表
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS gfex_palladium_contracts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            contract TEXT NOT NULL,
+            datetime TEXT NOT NULL,
+            open REAL,
+            high REAL,
+            low REAL,
+            close REAL,
+            volume INTEGER,
+            hold INTEGER,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(contract, datetime)
+        )
+    ''')
+    
+    # CME钯金各月份合约表
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS cme_palladium_contracts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            contract TEXT NOT NULL,
+            datetime TEXT NOT NULL,
+            open REAL,
+            high REAL,
+            low REAL,
+            close REAL,
+            volume INTEGER,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(contract, datetime)
+        )
+    ''')
     
     # 创建索引
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_pt_datetime ON platinum_spread(datetime)')

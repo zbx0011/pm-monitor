@@ -67,57 +67,76 @@ def fetch_cme_minute(tv, symbol, exchange, interval=Interval.in_1_minute, n_bars
 
 
 def generate_spread_data(tv, metal='platinum'):
-    """生成指定品种的价差数据"""
+    """生成指定品种的价差数据 - 使用小时级数据，确保两边同一时间匹配"""
     config = CONTRACTS[metal]
     
-    # 1. 获取广期所1分钟数据
-    gfex_df = fetch_gfex_minute(config['gfex_main'], period='1')
-    if gfex_df is None:
+    # 1. 获取广期所具体合约小时数据 (使用PT2610/PD2606)
+    try:
+        gfex_df = ak.futures_zh_minute_sina(symbol=config['gfex_symbol'], period='60')
+        gfex_df['datetime'] = pd.to_datetime(gfex_df['datetime'])
+        gfex_df = gfex_df.set_index('datetime').sort_index()
+        gfex_df = gfex_df.rename(columns={'close': 'gfex_close'})
+    except Exception as e:
+        print(f"  ✗ 广期所{config['gfex_symbol']}获取失败: {e}")
         return None
     
-    # 2. 获取CME 1分钟数据
-    cme_df = fetch_cme_minute(tv, config['cme_symbol'], config['cme_exchange'], 
-                               Interval.in_1_minute, n_bars=500)
-    if cme_df is None:
+    # 2. 获取CME小时数据 (TvDatafeed返回北京时间)
+    try:
+        cme_df = tv.get_hist(symbol=config['cme_symbol'], exchange=config['cme_exchange'], 
+                            interval=Interval.in_1_hour, n_bars=500)
+        if cme_df is None or len(cme_df) == 0:
+            print(f"  ✗ CME {config['cme_symbol']}数据为空")
+            return None
+        cme_df = cme_df.sort_index()
+        cme_df['cme_cny'] = (cme_df['close'] * RATE) / OZ_TO_GRAM
+        cme_df = cme_df.rename(columns={'close': 'cme_usd'})
+    except Exception as e:
+        print(f"  ✗ CME {config['cme_symbol']}获取失败: {e}")
         return None
     
-    # 3. 换算CME价格
-    cme_df['cme_cny'] = (cme_df['close'] * RATE) / OZ_TO_GRAM
-    
-    gfex_df = gfex_df.rename(columns={'close': 'gfex_close'})
-    
-    # 4. 计算当前价差
-    gfex_latest = gfex_df['gfex_close'].iloc[-1]
-    cme_latest = cme_df['cme_cny'].iloc[-1]
-    spread = gfex_latest - cme_latest
-    spread_pct = (spread / cme_latest) * 100
-    
-    # 5. 生成历史数据
+    # 3. 按北京时间小时匹配：生成历史数据
     history = []
     for idx, row in gfex_df.iterrows():
         gfex_price = float(row['gfex_close'])
-        cme_price = float(cme_latest)
-        spread_val = gfex_price - cme_price
-        spread_pct_val = (spread_val / cme_price) * 100
+        
+        # 查找CME同一小时的数据 (允许±30分钟匹配)
+        time_diff = abs((cme_df.index - idx).total_seconds())
+        matches = cme_df[time_diff <= 1800]
+        
+        if len(matches) == 0:
+            continue
+        
+        cme_row = matches.iloc[0]
+        cme_cny = float(cme_row['cme_cny'])
+        cme_usd = float(cme_row['cme_usd'])
+        spread_val = gfex_price - cme_cny
+        spread_pct_val = (spread_val / cme_cny) * 100
         
         history.append({
             'date': idx.strftime('%Y-%m-%d %H:%M'),
             'sge_price': gfex_price,
             'gfex_price': gfex_price,
-            'cme_cny': cme_price,
+            'cme_usd': cme_usd,
+            'cme_cny': cme_cny,
             'spread': spread_val,
             'spread_pct': spread_pct_val,
             'spread_sge_pct': spread_pct_val,
             'spread_gfex_pct': spread_pct_val
         })
     
-    # 6. 统计
+    if len(history) == 0:
+        print(f"  ✗ 没有匹配的数据")
+        return None
+    
+    # 4. 统计和当前数据
     spreads = [h['spread_pct'] for h in history]
     stats = {
         'avg_spread_pct': float(np.mean(spreads)),
         'max_spread_pct': float(np.max(spreads)),
         'min_spread_pct': float(np.min(spreads))
     }
+    
+    latest = history[-1]
     
     output = {
         'update_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
@@ -126,16 +145,16 @@ def generate_spread_data(tv, metal='platinum'):
             'cme': config['cme_symbol']
         },
         'current': {
-            'gfex_price': float(gfex_latest),
-            'cme_cny': float(cme_latest),
-            'cme_usd': float(cme_df['close'].iloc[-1]),
-            'spread': float(spread),
-            'spread_pct': float(spread_pct),
-            'spread_gfex_pct': float(spread_pct),
-            'spread_sge_pct': float(spread_pct)
+            'gfex_price': latest['gfex_price'],
+            'cme_cny': latest['cme_cny'],
+            'cme_usd': latest['cme_usd'],
+            'spread': latest['spread'],
+            'spread_pct': latest['spread_pct'],
+            'spread_gfex_pct': latest['spread_pct'],
+            'spread_sge_pct': latest['spread_pct']
         },
         'stats_3y_sge': stats,
-        'history': history[-500:]
+        'history': history
     }
     
     return output
