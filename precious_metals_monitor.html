@@ -1801,12 +1801,61 @@
             marketData.gfex.PD2606 = 578.25;
             marketData.exchangeRate = 7.04;
 
+            // 从JSON文件加载数据时间戳
+            try {
+                // 加载铂金数据
+                const ptResponse = await fetch('platinum_all_pairs.json?t=' + Date.now());
+                if (ptResponse.ok) {
+                    const ptData = await ptResponse.json();
+                    // 获取第一个配对的最后一条历史记录的时间
+                    const firstPair = Object.values(ptData.pairs)[0];
+                    if (firstPair && firstPair.history && firstPair.history.length > 0) {
+                        const lastRecord = firstPair.history[firstPair.history.length - 1];
+                        const ptGfexTimeEl = document.getElementById('pt-gfex-time');
+                        const ptCmeTimeEl = document.getElementById('pt-cme-time');
+                        if (ptGfexTimeEl) ptGfexTimeEl.textContent = lastRecord.date;
+                        if (ptCmeTimeEl) ptCmeTimeEl.textContent = lastRecord.date;
+                        // 更新价格
+                        if (firstPair.current) {
+                            marketData.gfex.PT2606 = firstPair.current.gfex_price;
+                            document.getElementById('pt-gfex').textContent = firstPair.current.gfex_price.toFixed(2);
+                            document.getElementById('pt-intl-usd').textContent = firstPair.current.cme_usd.toFixed(2);
+                            document.getElementById('pt-intl').textContent = firstPair.current.cme_cny.toFixed(2);
+                        }
+                    }
+                }
+
+                // 加载钯金数据
+                const pdResponse = await fetch('palladium_all_pairs.json?t=' + Date.now());
+                if (pdResponse.ok) {
+                    const pdData = await pdResponse.json();
+                    const firstPair = Object.values(pdData.pairs)[0];
+                    if (firstPair && firstPair.history && firstPair.history.length > 0) {
+                        const lastRecord = firstPair.history[firstPair.history.length - 1];
+                        const pdGfexTimeEl = document.getElementById('pd-gfex-time');
+                        const pdCmeTimeEl = document.getElementById('pd-cme-time');
+                        if (pdGfexTimeEl) pdGfexTimeEl.textContent = lastRecord.date;
+                        if (pdCmeTimeEl) pdCmeTimeEl.textContent = lastRecord.date;
+                        // 更新价格
+                        if (firstPair.current) {
+                            marketData.gfex.PD2606 = firstPair.current.gfex_price;
+                            document.getElementById('pd-gfex').textContent = firstPair.current.gfex_price.toFixed(2);
+                            document.getElementById('pd-intl-usd').textContent = firstPair.current.cme_usd.toFixed(2);
+                            document.getElementById('pd-intl').textContent = firstPair.current.cme_cny.toFixed(2);
+                        }
+                    }
+                }
+            } catch (e) {
+                console.log('加载时间戳数据失败:', e);
+            }
+
             updateDisplay();
             checkMarketStatus();
 
             // 每分钟检查市场状态
             setInterval(checkMarketStatus, 60000);
         }
+
 
         // 页面加载完成后初始化
         document.addEventListener('DOMContentLoaded', init);
