@@ -1,9 +1,40 @@
 """
 铂金钯金跨市场价差检查脚本 v2
-使用最新的国际价格数据
+使用最新的国际价格数据 - 从JSON文件读取
 """
 
 from datetime import datetime
+import json
+import os
+
+def load_prices_from_json():
+    """从JSON文件加载最新价格"""
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    pt_price = None
+    pd_price = None
+    gfex_pt = None
+    gfex_pd = None
+    
+    # 读取铂金数据
+    pt_file = os.path.join(script_dir, 'platinum_spread_analysis.json')
+    if os.path.exists(pt_file):
+        with open(pt_file, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            if 'current' in data:
+                pt_price = data['current'].get('cme_usd')
+                gfex_pt = data['current'].get('gfex_price')
+    
+    # 读取钯金数据
+    pd_file = os.path.join(script_dir, 'palladium_spread_analysis.json')
+    if os.path.exists(pd_file):
+        with open(pd_file, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            if 'current' in data:
+                pd_price = data['current'].get('cme_usd')
+                gfex_pd = data['current'].get('gfex_price')
+    
+    return pt_price, pd_price, gfex_pt, gfex_pd
 
 def calculate_spread_with_prices():
     """
@@ -17,20 +48,23 @@ def calculate_spread_with_prices():
     # 单位换算常数
     OZ_TO_GRAM = 31.1035  # 1盎司 = 31.1035克
     
-    # 广期所最新价格 (2025-12-24 10:25 从新浪获取)
+    # 从JSON读取最新价格
+    pt_usd, pd_usd, gfex_pt, gfex_pd = load_prices_from_json()
+    
+    # 广期所最新价格
     gfex_prices = {
-        'PT2606': 657.65,  # 元/克
-        'PD2606': 578.25   # 元/克
+        'PT2606': gfex_pt or 707.85,  # 元/克
+        'PD2606': gfex_pd or 280.0    # 元/克
     }
     
-    # 国际现货价格 (2025-12-23 来自 jmbullion/apmex/tradingeconomics)
+    # 国际价格 (从JSON读取)
     intl_prices = {
-        'XPT': 2357.40,  # 铂金 USD/盎司
-        'XPD': 1923.00   # 钯金 USD/盎司
+        'XPT': pt_usd or 2498.4,  # 铂金 USD/盎司
+        'XPD': pd_usd or 950.0    # 钯金 USD/盎司
     }
     
-    # 汇率 (从 exchangerate-api 实时获取)
-    exchange_rate = 7.04
+    # 汇率
+    exchange_rate = 7.27
     
     print("\n📊 数据来源:")
     print(f"  • 广期所: 新浪期货行情 (15-20分钟延迟)")

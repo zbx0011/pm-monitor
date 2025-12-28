@@ -1,21 +1,21 @@
 {
-  "update_time": "2025-12-27 11:58:57",
+  "update_time": "2025-12-28 16:01:01",
   "exchange_rate": 7.04,
   "gfex": {
-    "pt_price": 0,
+    "pt_price": 707.85,
     "pd_price": 515.65,
-    "pt_time": "11:58",
-    "pd_time": "11:58"
+    "pt_time": "16:01",
+    "pd_time": "16:01"
   },
   "cme": {
-    "pt_price": 0,
+    "pt_price": 2498.4,
     "pd_price": 1922.0,
-    "pt_time": "11:58",
-    "pd_time": "11:58"
+    "pt_time": "16:01",
+    "pd_time": "16:01"
   },
   "spread": {
-    "pt_spread": 0,
-    "pt_spread_pct": 0,
+    "pt_spread": 142.35942819939874,
+    "pt_spread_pct": 25.174500742975493,
     "pd_spread": 80.62243075538123,
     "pd_spread_pct": 18.532717568997732
   }

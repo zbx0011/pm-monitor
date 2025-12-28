@@ -577,9 +577,10 @@
         }
 
         .calculator-body {
-            display: grid;
-            grid-template-columns: 1fr 2fr;
-            gap: 24px;
+            display: block;
+            /* Removed grid constraint as inner content handles layout */
+            /* grid-template-columns: 1fr 2fr; */
+            /* gap: 24px; */
         }
 
         @media (max-width: 900px) {
@@ -829,128 +830,218 @@
                 <div
                     style="display: flex; align-items: center; gap: 12px; font-size: 0.8rem; color: var(--text-secondary);">
                     <span>📊 <span id="exchange-rate">USD/CNY = 7.04</span></span>
-                    <span>📅 <span id="data-time">自动更新中...</span></span>
                 </div>
-                <div id="premium-status"
-                    style="background: rgba(239, 68, 68, 0.2); padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; color: var(--negative); display: flex; align-items: center; gap: 4px;">
-                    🔴 广期所溢价较大
+
+                <div class="status-indicator" style="display: flex; gap: 12px;">
+                    <div style="display: flex; align-items: center; gap: 4px;">
+                        <div id="gfex-dot" class="status-dot"></div>
+                        <span id="gfex-status" style="font-size: 0.7rem;">广期所</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 4px;">
+                        <div id="nymex-dot" class="status-dot"></div>
+                        <span id="nymex-status" style="font-size: 0.7rem;">NYMEX</span>
+                    </div>
                 </div>
-                <div class="status-indicator">
-                    <div class="status-dot"></div>
-                    <span id="market-status">市场开放</span>
-                </div>
+                <span style="font-size: 0.7rem; color: var(--text-muted);">最新获取时间: <span id="data-time">--</span></span>
                 <button class="refresh-btn" onclick="refreshData()">
                     🔄 刷新数据
                 </button>
             </div>
         </header>
 
-        <!-- Price Cards -->
-        <div class="dashboard-grid">
-            <!-- Platinum Card -->
-            <div class="card" id="platinum-card">
-                <div class="card-header">
-                    <div class="card-title">
-                        <div class="card-icon platinum">Pt</div>
-                        <div>
-                            <h3>铂金 Platinum</h3>
-                            <span id="pt-contract-info">PT2610 | PLV2026 (2026年10月)</span>
-                        </div>
-                    </div>
+        <!-- Price Cards - 动态按价差排序 -->
+        <div id="spread-ranking-container" class="spread-ranking">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                <h3 style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                    📊 价差排行榜
+                    <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: normal;">按价差从大到小排序</span>
+                </h3>
+            </div>
+            <div id="spread-cards" class="dashboard-grid">
+                <!-- 动态生成配对卡片 -->
+                <div style="text-align: center; padding: 40px; color: var(--text-muted);">📊 加载中...</div>
+            </div>
+        </div>
+
+        <!-- Trading Calculator -->
+        <div class="calculator-section" id="calculator">
+            <div class="calculator-header">
+                <div style="display: flex; gap: 20px; align-items: center;">
+                    <h2>🧮 套利分析</h2>
+                    <span id="selected-pair-info"
+                        style="color: var(--text-secondary); font-size: 0.95rem; font-weight: 500; margin-top: 4px;"></span>
                 </div>
-
-                <div class="price-grid">
-                    <div class="price-item">
-                        <div class="price-label">广期所 PT2610</div>
-                        <div class="price-value cny" id="pt-gfex">657.65</div>
-                        <div class="price-sub">元/克 <br>
-                            <span id="pt-gfex-time"
-                                style="color:var(--text-secondary);font-size:0.75rem;font-weight:bold;background:rgba(255,255,255,0.1);padding:1px 4px;border-radius:4px;">2024.12.27
-                                11:37</span>
-                        </div>
-                    </div>
-                    <div class="price-item">
-                        <div class="price-label">国际价格对比 (USD/oz)</div>
-                        <div style="margin-bottom: 4px;">
-                            <span class="price-value usd" id="pt-intl-usd">2357.40</span>
-                            <span style="font-size: 0.8rem; color: var(--text-muted);">CME <span
-                                    id="pt-cme-contract">PLV2026</span></span>
-                        </div>
-                        <div style="margin-top: 4px; text-align: right;">
-                            <span id="pt-cme-time"
-                                style="color:var(--text-secondary);font-size:0.75rem;font-weight:bold;background:rgba(255,255,255,0.1);padding:1px 4px;border-radius:4px;">2024.12.27
-                                11:37</span>
-                        </div>
-
-                        <div
-                            style="margin-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 8px; text-align: right;">
-                            <div style="font-size: 1.1rem; font-weight: 600; color: var(--text-primary);">
-                                CME折算: ¥<span id="pt-intl" style="color: var(--info);">533.58</span>/克
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="spread-section">
-                    <div class="spread-label">价差 (广期所 - 国际)</div>
-                    <div class="spread-value positive" id="pt-spread">+124.07</div>
-                    <div class="spread-pct positive" id="pt-spread-pct">+23.25%</div>
-                    <div class="spread-direction" id="pt-direction">
-                        🔴 广期所溢价 → 做空广期所 + 做多国际
-                    </div>
+                <div id="calc-pair-tabs" style="display: flex; gap: 12px; align-items: center;">
+                    <!-- Dropdown containers will be injected here -->
                 </div>
             </div>
 
-            <!-- Palladium Card -->
-            <div class="card" id="palladium-card">
-                <div class="card-header">
-                    <div class="card-title">
-                        <div class="card-icon palladium">Pd</div>
-                        <div>
-                            <h3>钯金 Palladium</h3>
-                            <span id="pd-contract-info">PD2606 | PAM2026 (2026年6月)</span>
-                        </div>
-                    </div>
-                </div>
+            <div class="calculator-body">
 
-                <div class="price-grid">
-                    <div class="price-item">
-                        <div class="price-label">广期所 PD2606</div>
-                        <div class="price-value cny" id="pd-gfex">578.25</div>
-                        <div class="price-sub">元/克 <br>
-                            <span id="pd-gfex-time"
-                                style="color:var(--text-secondary);font-size:0.75rem;font-weight:bold;background:rgba(255,255,255,0.1);padding:1px 4px;border-radius:4px;">2024.12.27
-                                11:37</span>
-                        </div>
-                    </div>
-                    <div class="price-item">
-                        <div class="price-label">国际价格对比 (USD/oz)</div>
-                        <div style="margin-bottom: 4px;">
-                            <span class="price-value usd" id="pd-intl-usd">1923.00</span>
-                            <span style="font-size: 0.8rem; color: var(--text-muted);">CME <span
-                                    id="pd-cme-contract">PAM2026</span></span>
-                        </div>
-                        <div style="margin-top: 4px; text-align: right;">
-                            <span id="pd-cme-time"
-                                style="color:var(--text-secondary);font-size:0.75rem;font-weight:bold;background:rgba(255,255,255,0.1);padding:1px 4px;border-radius:4px;">2024.12.27
-                                11:37</span>
+                <!-- Result Section - 左右两列布局 -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: stretch;">
+
+                    <!-- 左列：收益分析 -->
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+
+                        <!-- 两个收益卡片并排显示 -->
+                        <div style="display: flex; gap: 12px; align-items: stretch;">
+                            <!-- 预期毛收益 (完全收敛) -->
+                            <div class="result-card"
+                                style="flex: 1; margin-bottom: 0; display: flex; flex-direction: column;">
+                                <div
+                                    style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
+                                    <h4 style="margin: 0;">预期毛收益</h4>
+                                    <span class="result-sub" style="color: var(--text-secondary); font-size: 0.8rem;"
+                                        id="gross-profit-detail">价差--元/克 × --克</span>
+                                </div>
+                                <div class="result-value" style="color: var(--positive); font-size: 1.8rem; flex: 1;"
+                                    id="result-gross-profit">--</div>
+                                <div style="color: var(--negative); font-weight: 700; font-size: 0.8rem; margin-top: 8px;"
+                                    id="result-condition-full">若价差完全收敛</div>
+                            </div>
+
+                            <!-- 预期毛收益 (均值收敛) -->
+                            <div class="result-card"
+                                style="flex: 1; margin-bottom: 0; display: flex; flex-direction: column;">
+                                <div
+                                    style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
+                                    <h4 style="margin: 0;">预期毛收益</h4>
+                                    <span class="result-sub" style="color: var(--text-secondary); font-size: 0.8rem;"
+                                        id="avg-profit-detail">价差--元/克 × --克</span>
+                                </div>
+                                <div class="result-value" style="color: var(--accent-gold); font-size: 1.8rem; flex: 1;"
+                                    id="result-avg-profit">--</div>
+                                <div style="color: var(--negative); font-weight: 700; font-size: 0.8rem; margin-top: 8px;"
+                                    id="result-condition-avg">若价差收敛至均值 16%</div>
+                            </div>
                         </div>
 
+                        <!-- 第二行：预计费用 -->
                         <div
-                            style="margin-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 8px; text-align: right;">
-                            <div style="font-size: 1.1rem; font-weight: 600; color: var(--text-primary);">
-                                CME折算: ¥<span id="pd-intl" style="color: var(--info);">435.25</span>/克
+                            style="display: flex; gap: 12px; align-items: stretch; background: var(--bg-secondary); border-radius: 8px; padding: 12px 16px;">
+                            <!-- 交易手续费 -->
+                            <div style="flex: 1; text-align: center;">
+                                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 4px;">交易手续费
+                                </div>
+                                <div style="font-size: 1rem; color: var(--warning); font-weight: 600;"
+                                    id="result-trading-fee">--
+                                </div>
+                                <div style="font-size: 0.65rem; color: var(--text-hint);">双边万分之二</div>
+                            </div>
+                            <div style="width: 1px; background: var(--border-color);"></div>
+                            <!-- 经纪佣金 -->
+                            <div style="flex: 1; text-align: center;">
+                                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 4px;">经纪佣金
+                                </div>
+                                <div style="font-size: 1rem; color: var(--warning); font-weight: 600;"
+                                    id="result-broker-fee">~¥200
+                                </div>
+                                <div style="font-size: 0.65rem; color: var(--text-hint);">预估固定</div>
+                            </div>
+                            <div style="width: 1px; background: var(--border-color);"></div>
+                            <!-- 滑点成本 -->
+                            <div style="flex: 1; text-align: center;">
+                                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 4px;">滑点成本
+                                </div>
+                                <div style="font-size: 1rem; color: var(--warning); font-weight: 600;"
+                                    id="result-slippage">--</div>
+                                <div style="font-size: 0.65rem; color: var(--text-hint);">~0.1%</div>
+                            </div>
+                        </div>
+
+                        <!-- 风险因素 -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <div class="result-card" style="padding: 12px 16px;">
+                                <h4 style="margin-bottom: 8px;">💱 外汇波动影响</h4>
+                                <div class="result-value"
+                                    style="color: var(--info); font-size: 1.2rem; margin-bottom: 4px;"
+                                    id="result-fx-impact">--</div>
+                                <div class="result-sub" style="font-size: 0.75rem;">
+                                    <span style="color: var(--positive);">7.04→7.11 ✅有利</span>
+                                    <span style="color: var(--text-muted); margin: 0 6px;">|</span>
+                                    <span style="color: var(--negative);">7.04→6.97 ❌不利</span>
+                                </div>
+                            </div>
+                            <div class="result-card" style="padding: 12px 16px;">
+                                <h4 style="margin-bottom: 8px;">⚖️ 合约敞口影响</h4>
+                                <div class="result-value"
+                                    style="color: var(--warning); font-size: 1.2rem; margin-bottom: 4px;"
+                                    id="result-exposure-impact">--</div>
+                                <div class="result-sub" id="exposure-impact-detail" style="font-size: 0.75rem;">敞口110克 ×
+                                    10%波动</div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="spread-section">
-                    <div class="spread-label">价差 (广期所 - 国际)</div>
-                    <div class="spread-value positive" id="pd-spread">+143.00</div>
-                    <div class="spread-pct positive" id="pd-spread-pct">+32.85%</div>
-                    <div class="spread-direction" id="pd-direction">
-                        🔴 广期所溢价 → 做空广期所 + 做多国际
+                    <!-- 右列：资金分配建议 -->
+                    <div class="result-card"
+                        style="border-left-color: var(--info); display: flex; flex-direction: column;">
+                        <h4 style="display: flex; align-items: center; justify-content: space-between;">
+                            <span>💰 资金分配建议 <span
+                                    style="font-size: 0.65rem; color: var(--text-muted); font-weight: normal;">(平衡爆仓风险)</span></span>
+                            <span style="display: flex; align-items: center; gap: 4px;">
+                                <span style="font-size: 0.7rem; color: var(--text-muted);">总资金:</span>
+                                <input type="number" id="calc-total-capital" value="1500000" step="100000"
+                                    onchange="updateCapitalAllocation()"
+                                    style="background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-primary); padding: 2px 6px; border-radius: 4px; width: 90px; font-size: 0.75rem;">
+                            </span>
+                        </h4>
+
+                        <!-- CME分配比例滑块 -->
+                        <div style="margin: 10px 0; padding: 10px; background: var(--bg-primary); border-radius: 6px;">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                <span style="font-size: 0.8rem; color: var(--text-muted);">CME分配比例:</span>
+                                <span id="cme-ratio-display"
+                                    style="font-size: 0.9rem; font-weight: 600; color: var(--info);">35%</span>
+                            </div>
+                            <input type="range" id="cme-ratio-slider" min="30" max="70" value="35" step="5"
+                                oninput="updateCmeRatioDisplay(); updateCapitalAllocation();"
+                                style="width: 100%; cursor: pointer; accent-color: var(--info);">
+                            <div
+                                style="display: flex; justify-content: space-between; font-size: 0.6rem; color: var(--text-muted); margin-top: 2px;">
+                                <span>← 偏向广期所</span>
+                                <span>偏向CME →</span>
+                            </div>
+                        </div>
+
+                        <!-- 分配结果 -->
+                        <div
+                            style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 0.85rem; flex: 1;">
+                            <div style="background: rgba(239, 68, 68, 0.1); padding: 12px; border-radius: 8px;">
+                                <div style="color: var(--text-muted); font-size: 0.75rem; margin-bottom: 4px;">广期所账户:
+                                </div>
+                                <div style="font-size: 1rem; font-weight: 600;" id="alloc-gfex-amount">¥1,100,000 <span
+                                        style="font-size: 0.7rem; color: var(--text-muted);">(55%)</span></div>
+                                <div style="color: var(--positive); font-size: 0.75rem;" id="alloc-gfex-resist">可抗涨幅
+                                    +52%</div>
+                            </div>
+                            <div style="background: rgba(34, 197, 94, 0.1); padding: 12px; border-radius: 8px;">
+                                <div style="color: var(--text-muted); font-size: 0.75rem; margin-bottom: 4px;">CME账户:
+                                </div>
+                                <div style="font-size: 1rem; font-weight: 600;" id="alloc-cme-amount">$127,841 <span
+                                        style="font-size: 0.7rem; color: var(--text-muted);">(45%)</span></div>
+                                <div style="color: var(--negative); font-size: 0.75rem;" id="alloc-cme-resist">可抗跌幅 -53%
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 止损建议 -->
+                        <div
+                            style="margin-top: 12px; padding: 12px; background: rgba(239, 68, 68, 0.1); border-radius: 8px; border-left: 3px solid var(--negative);">
+                            <div style="font-size: 0.75rem; color: var(--negative); margin-bottom: 4px;">🔴 建议止损价
+                                (保留20%安全边际)</div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.8rem;">
+                                <div>广期所: <span style="font-weight: 600;" id="stop-gfex">¥998.63</span> <span
+                                        style="font-size: 0.7rem; color: var(--text-muted);"
+                                        id="stop-gfex-pct">(+41.6%)</span>
+                                </div>
+                                <div>CME: <span style="font-weight: 600;" id="stop-cme">$1390.57</span> <span
+                                        style="font-size: 0.7rem; color: var(--text-muted);"
+                                        id="stop-cme-pct">(-42.4%)</span></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -991,22 +1082,52 @@
                             style="padding: 4px 6px; border: 1px solid var(--accent-gold); border-radius: 4px; background: var(--bg-card); color: var(--text-primary); font-size: 0.7rem; cursor: pointer; display: none;">
                             <option value="2606-2606">2606-2606</option>
                             <option value="2606-2603">2606-2603</option>
+                            <option value="2606-2609">2606-2609</option>
+                            <option value="2606-2612">2606-2612</option>
                             <option value="2608-2606">2608-2606</option>
                             <option value="2608-2603">2608-2603</option>
+                            <option value="2608-2609">2608-2609</option>
+                            <option value="2608-2612">2608-2612</option>
                             <option value="2610-2606">2610-2606</option>
                             <option value="2610-2603">2610-2603</option>
-                            <option value="2612-2612">2612-2612</option>
+                            <option value="2610-2609">2610-2609</option>
+                            <option value="2610-2612">2610-2612</option>
+                            <option value="2612-2606">2612-2606</option>
+                            <option value="2612-2603">2612-2603</option>
                             <option value="2612-2609">2612-2609</option>
+                            <option value="2612-2612">2612-2612</option>
                         </select>
                         <button onclick="switchCommodity('gold')" id="tab-gold" class="commodity-tab"
                             style="padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.75rem; background: transparent; color: var(--text-muted);">黄金
-                            <span style="font-size:0.6rem;opacity:0.7">主力</span></button>
+                            <span id="au-pair-label" style="font-size:0.6rem;opacity:0.7">2412</span></button>
+                        <!-- 黄金合约选择 -->
+                        <select id="gold-pair-select" onchange="switchGoldPair(this.value)"
+                            style="padding: 4px 6px; border: 1px solid var(--accent-gold); border-radius: 4px; background: var(--bg-card); color: var(--text-primary); font-size: 0.7rem; cursor: pointer; display: none;">
+                            <option value="AU2412">AU2412</option>
+                            <option value="AU2406">AU2406</option>
+                            <option value="AU2312">AU2312</option>
+                            <option value="AU2306">AU2306</option>
+                        </select>
                         <button onclick="switchCommodity('silver')" id="tab-silver" class="commodity-tab"
                             style="padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.75rem; background: transparent; color: var(--text-muted);">白银
-                            <span style="font-size:0.6rem;opacity:0.7">主力</span></button>
+                            <span id="ag-pair-label" style="font-size:0.6rem;opacity:0.7">2412</span></button>
+                        <!-- 白银合约选择 -->
+                        <select id="silver-pair-select" onchange="switchSilverPair(this.value)"
+                            style="padding: 4px 6px; border: 1px solid var(--accent-gold); border-radius: 4px; background: var(--bg-card); color: var(--text-primary); font-size: 0.7rem; cursor: pointer; display: none;">
+                            <option value="AG2412">AG2412</option>
+                            <option value="AG2406">AG2406</option>
+                        </select>
                         <button onclick="switchCommodity('copper')" id="tab-copper" class="commodity-tab"
                             style="padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.75rem; background: transparent; color: var(--text-muted);">铜
                             <span style="font-size:0.6rem;opacity:0.7">主力</span></button>
+                    </div>
+                    <!-- 价差类型切换 -->
+                    <div
+                        style="display: flex; gap: 4px; background: var(--bg-secondary); padding: 3px; border-radius: 8px; margin-right: 8px;">
+                        <button onclick="switchSpreadType('pct')" id="spread-type-pct"
+                            style="padding: 5px 10px; border: none; border-radius: 5px; cursor: pointer; font-size: 0.7rem; background: var(--accent-gold); color: #000;">比例(%)</button>
+                        <button onclick="switchSpreadType('abs')" id="spread-type-abs"
+                            style="padding: 5px 10px; border: none; border-radius: 5px; cursor: pointer; font-size: 0.7rem; background: transparent; color: var(--text-muted);">价差(元)</button>
                     </div>
                     <button onclick="loadSpreadChart()"
                         style="padding: 6px 12px; background: var(--accent-gold); border: none; border-radius: 6px; color: #000; cursor: pointer; font-size: 0.8rem;">
@@ -1023,17 +1144,17 @@
                     </div>
                 </div>
                 <div style="background: var(--bg-secondary); padding: 12px; border-radius: 8px; text-align: center;">
-                    <div style="font-size: 0.75rem; color: var(--text-muted);">3年均值</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">均值</div>
                     <div style="font-size: 1.2rem; font-weight: 600; color: var(--accent-gold);" id="spread-avg">+5.10%
                     </div>
                 </div>
                 <div style="background: var(--bg-secondary); padding: 12px; border-radius: 8px; text-align: center;">
-                    <div style="font-size: 0.75rem; color: var(--text-muted);">3年最高</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">最高</div>
                     <div style="font-size: 1.2rem; font-weight: 600; color: var(--warning);" id="spread-max">+19.66%
                     </div>
                 </div>
                 <div style="background: var(--bg-secondary); padding: 12px; border-radius: 8px; text-align: center;">
-                    <div style="font-size: 0.75rem; color: var(--text-muted);">3年最低</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">最低</div>
                     <div style="font-size: 1.2rem; font-weight: 600; color: var(--info);" id="spread-min">-3.23%</div>
                 </div>
             </div>
@@ -1041,319 +1162,6 @@
                 style="margin-top: 12px; padding: 10px; background: rgba(239, 68, 68, 0.1); border-radius: 8px; border-left: 3px solid var(--negative); display: none;">
                 <div id="risk-warning-text" style="font-size: 0.85rem; color: var(--text-secondary);">
                     <!-- 动态加载内容 -->
-                </div>
-            </div>
-        </div>
-
-
-        <!-- 合约收敛分析图表 -->
-        <div class="convergence-section"
-            style="margin: 20px auto; max-width: 1200px; background: var(--bg-card); border-radius: 16px; padding: 20px; border: 1px solid var(--border-color);">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-                <h3 style="margin: 0; display: flex; align-items: center; gap: 8px;">
-                    📉 合约收敛分析
-                    <span
-                        style="font-size: 0.8rem; color: var(--text-muted); font-weight: normal;">特定交割合约从上市到交割的价差走势</span>
-                </h3>
-                <button onclick="loadConvergenceChart()"
-                    style="padding: 6px 12px; background: var(--accent-gold); border: none; border-radius: 6px; color: #000; cursor: pointer; font-size: 0.8rem;">
-                    刷新数据
-                </button>
-            </div>
-            <!-- 合约选择按钮 -->
-            <div id="convergence-tabs" style="display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap;">
-                <!-- 铂金钯金 -->
-                <button onclick="loadConvergenceChart('PT2610')" class="convergence-tab"
-                    style="padding: 6px 12px; border: 1px solid var(--accent-gold); border-radius: 6px; cursor: pointer; font-size: 0.75rem; background: var(--accent-gold); color: #000;">PT2610
-                    (PLV2026)</button>
-                <button onclick="loadConvergenceChart('PD2606')" class="convergence-tab"
-                    style="padding: 6px 12px; border: 1px solid var(--text-muted); border-radius: 6px; cursor: pointer; font-size: 0.75rem; background: transparent; color: var(--text-muted);">PD2606
-                    (PAM2026)</button>
-                <!-- 黄金白银 (动态生成) -->
-            </div>
-            <div id="convergence-chart" style="width: 100%; height: 400px;"></div>
-            <div id="convergence-stats"
-                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 16px;">
-                <!-- 动态加载统计 -->
-            </div>
-        </div>
-
-        <!-- Trading Calculator -->
-        <div class="calculator-section" id="calculator">
-            <div class="calculator-header">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <h2>🧮 套利交易计算器</h2>
-                    <select id="calc-pair-select" onchange="onCalcPairChange()"
-                        style="padding: 4px 8px; border: 1px solid var(--accent-gold); border-radius: 6px; background: var(--bg-primary); color: var(--text-primary); font-size: 0.8rem; height: 28px; display: none;">
-                        <!-- 动态填充 -->
-                    </select>
-                </div>
-                <div class="calculator-tabs">
-                    <button class="calc-tab" onclick="selectMetal('PT')" id="tab-pt">
-                        铂金 PT <span id="arb-pt-price"
-                            style="font-size:0.75rem;color:var(--text-muted);margin-left:4px;"></span>
-                    </button>
-                    <button class="calc-tab active" onclick="selectMetal('PD')" id="tab-pd">
-                        钯金 PD <span id="arb-pd-price"
-                            style="font-size:0.75rem;color:var(--text-muted);margin-left:4px;"></span>
-                    </button>
-                </div>
-            </div>
-
-            <div class="calculator-body">
-                <!-- Input Section -->
-                <div class="calc-input-section">
-                    <div class="calc-input-group">
-                        <label>📊 交易手数 (广期所)</label>
-                        <input type="number" id="calc-lots" value="3" min="1" max="500" onchange="calculateArbitrage()">
-                        <div class="input-hint" style="margin-top: 4px; font-size: 0.75rem; color: var(--text-muted);">
-                            1手 = 1000克 | 钯金建议3手起 | 铂金建议2手起
-                        </div>
-                    </div>
-
-                    <!-- 对冲平台选择 -->
-                    <div class="calc-input-group">
-                        <label>🌐 对冲平台</label>
-                        <select id="calc-hedge-platform" onchange="updateHedgePlatform()">
-                            <option value="cme" selected>CME交割合约 (推荐)</option>
-                            <option value="bybit">Bybit MT5 永续CFD</option>
-                        </select>
-                        <div class="input-hint" id="hedge-platform-hint"
-                            style="margin-top: 4px; font-size: 0.75rem; color: var(--text-muted);">
-                            CME: 同时到期，强制收敛 | Bybit: 门槛低，无到期日
-                        </div>
-                    </div>
-
-                    <div class="calc-input-group">
-                        <label>🎯 预期价差收敛比例</label>
-                        <select id="calc-convergence" onchange="calculateArbitrage()">
-                            <option value="0.5">50% (提前平仓)</option>
-                            <option value="0.75">75% (接近到期)</option>
-                            <option value="1.0" selected>100% (到期交割)</option>
-                        </select>
-                        <div class="input-hint" style="margin-top: 4px; font-size: 0.75rem; color: var(--text-muted);">
-                            预期两市场价差收窄的程度
-                        </div>
-                    </div>
-                    <div class="calc-input-group">
-                        <label>⏱️ 持仓周期</label>
-                        <select id="calc-period">
-                            <option value="7">1周</option>
-                            <option value="30" selected>1个月</option>
-                            <option value="90">3个月</option>
-                            <option value="180">6个月 (到期交割)</option>
-                        </select>
-                    </div>
-                    <button class="calc-btn" onclick="calculateArbitrage()">
-                        📈 计算套利方案
-                    </button>
-                </div>
-
-                <!-- Result Section -->
-                <div class="calc-result-section" id="calc-results">
-                    <!-- 持仓明细 -->
-                    <div class="result-card"
-                        style="grid-column: 1 / -1; background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(34, 197, 94, 0.1)); border-left-color: var(--accent-gold); padding: 16px;">
-                        <h4 style="margin-bottom: 12px;">📋 持仓明细</h4>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
-                            <!-- 广期所做空 -->
-                            <div
-                                style="background: rgba(239, 68, 68, 0.15); padding: 10px 12px; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.3);">
-                                <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
-                                    <span
-                                        style="background: var(--negative); color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 600;">做空
-                                        SELL</span>
-                                    <span style="font-size: 0.75rem; color: var(--text-secondary);">广期所</span>
-                                </div>
-                                <div style="font-size: 1rem; font-weight: 600; color: var(--text-primary);"
-                                    id="gfex-position">PD2606 × 3手</div>
-                                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
-                                    合约价值: <span style="color: var(--accent-gold);"
-                                        id="gfex-contract-value">¥1,734,750</span>
-                                    · 保证金: <span style="color: var(--info);" id="result-gfex-margin">¥208,170</span>
-                                </div>
-                                <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 2px;"
-                                    id="gfex-grams">
-                                    = 3,000克
-                                </div>
-                            </div>
-                            <!-- 对冲做多 -->
-                            <div id="hedge-position-card"
-                                style="background: rgba(34, 197, 94, 0.15); padding: 10px 12px; border-radius: 8px; border: 1px solid rgba(34, 197, 94, 0.3);">
-                                <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
-                                    <span
-                                        style="background: var(--positive); color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 600;">做多
-                                        BUY</span>
-                                    <span style="font-size: 0.75rem; color: var(--text-secondary);"
-                                        id="hedge-platform-name">CME NYMEX</span>
-                                    <span id="hedge-contract-type"
-                                        style="font-size: 0.6rem; padding: 1px 4px; border-radius: 3px; background: var(--info); color: #fff;">交割</span>
-                                </div>
-                                <div style="font-size: 1rem; font-weight: 600; color: var(--text-primary);"
-                                    id="hedge-position">PA 2606 × 1手</div>
-                                <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 2px;"
-                                    id="hedge-position-detail">= 3,110克 ✓</div>
-                                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
-                                    合约价值: <span style="color: var(--accent-gold);"
-                                        id="hedge-contract-value">≈¥695,552</span>
-                                    · 保证金: <span style="color: var(--info);" id="result-hedge-margin">≈¥105,600</span>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- 资金汇总 -->
-                        <div
-                            style="padding: 10px 14px; background: var(--bg-secondary); border-radius: 8px; text-align: center;">
-                            <span style="color: var(--text-muted); font-size: 0.8rem;">总保证金需求:</span>
-                            <span class="result-value gold" id="result-total-margin"
-                                style="font-size: 1.2rem; margin-left: 6px;">¥174,990</span>
-                        </div>
-                    </div>
-
-                    <!-- 预期收益 -->
-                    <div class="result-card profit">
-                        <h4>预期毛收益 <span style="font-size: 0.7rem; color: var(--warning);">（若价差收敛）</span></h4>
-                        <div style="display: flex; align-items: baseline; gap: 12px;">
-                            <div class="result-value green" id="result-gross-profit">¥62,035</div>
-                            <div style="font-size: 1rem; color: var(--positive);" id="result-return-rate">+55%</div>
-                        </div>
-                        <div class="result-sub" id="gross-profit-detail">价差124元/克 × 50%收敛 × 1000克</div>
-                    </div>
-                    <div class="result-card profit">
-                        <h4>扣除成本后净收益</h4>
-                        <div class="result-value green" id="result-net-profit">¥61,050</div>
-                        <div class="result-sub" id="net-profit-detail">毛收益 - 手续费</div>
-                    </div>
-
-                    <!-- 风险评估 -->
-                    <div class="result-card risk">
-                        <h4>最大亏损 (价差扩大20%)</h4>
-                        <div class="result-value red" id="result-max-loss">-¥24,807</div>
-                        <div class="result-sub">若价差继续扩大而非收敛</div>
-                    </div>
-                    <div class="result-card">
-                        <h4>收益风险比</h4>
-                        <div class="result-value gold" id="result-risk-ratio">2.5:1</div>
-                        <div class="result-sub">预期收益 / 最大亏损</div>
-                    </div>
-
-
-                    <!-- Risk Analysis: Exposure & Liquidation -->
-                    <div class="result-card" style="grid-column: 1 / -1; border-left-color: var(--negative);">
-                        <h4 style="display: flex; align-items: center; gap: 6px;">
-                            🛡️ 风险深度分析 <span
-                                style="font-size: 0.7rem; color: var(--text-muted); font-weight: normal;">(基于当前持仓)</span>
-                        </h4>
-
-                        <!-- Exposure Risk (Full Width) -->
-                        <div style="margin-top: 10px; margin-bottom: 12px;">
-                            <div
-                                style="background: var(--bg-primary); padding: 12px; border-radius: 6px; display: flex; align-items: center; justify-content: space-between;">
-                                <div>
-                                    <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px;">⚖️
-                                        数量敞口风险 (净头寸)</div>
-                                    <div style="display: flex; align-items: baseline; gap: 8px;">
-                                        <span id="risk-exposure-val"
-                                            style="font-size: 1.2rem; font-weight: 600; color: var(--text-primary);">--</span>
-                                    </div>
-                                </div>
-                                <div style="text-align: right;">
-                                    <div style="font-size: 0.75rem; color: var(--text-muted);">波动敏感度 (1%)</div>
-                                    <div style="font-size: 0.9rem; color: var(--warning); font-weight:500; margin-top: 2px;"
-                                        id="risk-exposure-pnl">--</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Capital Allocation -->
-                        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border-color);">
-                            <div
-                                style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <label style="font-size: 0.85rem; color: var(--text-primary); font-weight: 600;">💰
-                                        资金分配建议</label>
-                                    <span style="font-size: 0.7rem; color: var(--text-muted);">(平衡双边爆仓风险)</span>
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 4px;">
-                                    <span style="font-size: 0.75rem; color: var(--text-muted);">总资金(¥):</span>
-                                    <input type="number" id="calc-total-capital" value="500000" step="10000"
-                                        onchange="calculateArbitrage()"
-                                        style="background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-primary); padding: 2px 6px; border-radius: 4px; width: 80px; font-size: 0.8rem;">
-                                </div>
-                            </div>
-                            <!-- CME偏向滑块 -->
-                            <div
-                                style="margin: 10px 0; padding: 10px; background: var(--bg-primary); border-radius: 6px;">
-                                <div
-                                    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                                    <span style="font-size: 0.8rem; color: var(--text-muted);">CME分配比例:</span>
-                                    <span id="cme-ratio-display"
-                                        style="font-size: 0.9rem; font-weight: 600; color: var(--info);">60%</span>
-                                </div>
-                                <input type="range" id="cme-ratio-slider" min="30" max="90" value="60" step="5"
-                                    oninput="updateCmeRatioDisplay(); calculateArbitrage();"
-                                    style="width: 100%; cursor: pointer; accent-color: var(--info);">
-                                <div
-                                    style="display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--text-muted); margin-top: 2px;">
-                                    <span>← 偏向广期所</span>
-                                    <span>偏向CME →</span>
-                                </div>
-                            </div>
-                            <div id="allocation-result"
-                                style="background: rgba(59, 130, 246, 0.1); border-radius: 6px; padding: 10px; font-size: 0.8rem; color: var(--text-secondary);">
-                                <!-- Dynamic Result -->
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 策略建议 -->
-                    <div class="strategy-box">
-                        <h4>📋 交易执行步骤</h4>
-                        <div class="strategy-steps">
-                            <div class="strategy-step">
-                                <div class="step-number">1</div>
-                                <div class="step-content">
-                                    <strong>广期所开空仓</strong>
-                                    <span id="step1-detail">卖出 PT2606 1手 @ 657.65元/克</span>
-                                </div>
-                            </div>
-                            <div class="strategy-step">
-                                <div class="step-number">2</div>
-                                <div class="step-content">
-                                    <strong>Bybit开多仓</strong>
-                                    <span id="step2-detail">买入 XPT/USD 32.17盎司 @ $2357</span>
-                                </div>
-                            </div>
-                            <div class="strategy-step">
-                                <div class="step-number">3</div>
-                                <div class="step-content">
-                                    <strong>持仓观察</strong>
-                                    <span>等待价差收敛或达到止盈/止损点</span>
-                                </div>
-                            </div>
-                            <div class="strategy-step">
-                                <div class="step-number">4</div>
-                                <div class="step-content">
-                                    <strong>同时平仓</strong>
-                                    <span>两边同时平仓锁定收益</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="risk-meter">
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                                <span style="font-size: 0.85rem;">风险等级:</span>
-                                <span style="font-size: 0.85rem; color: var(--warning);" id="risk-level">⚠️ 中高风险</span>
-                            </div>
-                            <div class="risk-bar">
-                                <div class="risk-fill medium" id="risk-bar-fill"></div>
-                            </div>
-                            <div class="risk-labels">
-                                <span>低</span>
-                                <span>中</span>
-                                <span>高</span>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -1552,8 +1360,8 @@
                 PD2606: null
             },
             intl: {
-                XPT: null,
-                XPD: null
+                XPT: null,  // 从JSON动态获取
+                XPD: null   // 从JSON动态获取
             },
             exchangeRate: 7.04,
             lastUpdate: null
@@ -1608,10 +1416,10 @@
             document.getElementById('data-time').textContent = now.toLocaleString('zh-CN');
             document.getElementById('exchange-rate').textContent = `USD/CNY = ${marketData.exchangeRate.toFixed(4)}`;
 
-            // 国际价格 (使用最新查询到的数据)
+            // 国际价格 (从JSON动态获取)
             const intlPrices = {
-                XPT: 2357.40,  // 铂金 USD/oz
-                XPD: 1923.00   // 钯金 USD/oz
+                XPT: marketData.intl.XPT || 2500,  // 铂金 USD/oz
+                XPD: marketData.intl.XPD || 950    // 钯金 USD/oz
             };
 
             // 更新铂金
@@ -1685,8 +1493,8 @@
             const pdGfex = marketData.gfex.PD2606 || 0;
 
             // 简单判断溢价情况
-            const ptIntlCny = 2357.40 * marketData.exchangeRate / OZ_TO_GRAM;
-            const pdIntlCny = 1923.00 * marketData.exchangeRate / OZ_TO_GRAM;
+            const ptIntlCny = (marketData.intl.XPT || 2500) * marketData.exchangeRate / OZ_TO_GRAM;
+            const pdIntlCny = (marketData.intl.XPD || 950) * marketData.exchangeRate / OZ_TO_GRAM;
 
             const ptPremium = ((ptGfex - ptIntlCny) / ptIntlCny) * 100;
             const pdPremium = ((pdGfex - pdIntlCny) / pdIntlCny) * 100;
@@ -1807,20 +1615,21 @@
                 const ptResponse = await fetch('platinum_all_pairs.json?t=' + Date.now());
                 if (ptResponse.ok) {
                     const ptData = await ptResponse.json();
-                    // 获取第一个配对的最后一条历史记录的时间
-                    const firstPair = Object.values(ptData.pairs)[0];
-                    if (firstPair && firstPair.history && firstPair.history.length > 0) {
-                        const lastRecord = firstPair.history[firstPair.history.length - 1];
+                    // 优先选择2610-2610配对（PT2610 vs PLV2026），否则用第一个
+                    const targetPair = ptData.pairs['2610-2610'] || Object.values(ptData.pairs)[0];
+                    if (targetPair && targetPair.history && targetPair.history.length > 0) {
+                        const lastRecord = targetPair.history[targetPair.history.length - 1];
                         const ptGfexTimeEl = document.getElementById('pt-gfex-time');
                         const ptCmeTimeEl = document.getElementById('pt-cme-time');
                         if (ptGfexTimeEl) ptGfexTimeEl.textContent = lastRecord.date;
                         if (ptCmeTimeEl) ptCmeTimeEl.textContent = lastRecord.date;
                         // 更新价格
-                        if (firstPair.current) {
-                            marketData.gfex.PT2606 = firstPair.current.gfex_price;
-                            document.getElementById('pt-gfex').textContent = firstPair.current.gfex_price.toFixed(2);
-                            document.getElementById('pt-intl-usd').textContent = firstPair.current.cme_usd.toFixed(2);
-                            document.getElementById('pt-intl').textContent = firstPair.current.cme_cny.toFixed(2);
+                        if (targetPair.current) {
+                            marketData.gfex.PT2606 = targetPair.current.gfex_price;
+                            marketData.intl.XPT = targetPair.current.cme_usd;  // 动态更新国际价格
+                            document.getElementById('pt-gfex').textContent = targetPair.current.gfex_price.toFixed(2);
+                            document.getElementById('pt-intl-usd').textContent = targetPair.current.cme_usd.toFixed(2);
+                            document.getElementById('pt-intl').textContent = targetPair.current.cme_cny.toFixed(2);
                         }
                     }
                 }
@@ -1829,19 +1638,21 @@
                 const pdResponse = await fetch('palladium_all_pairs.json?t=' + Date.now());
                 if (pdResponse.ok) {
                     const pdData = await pdResponse.json();
-                    const firstPair = Object.values(pdData.pairs)[0];
-                    if (firstPair && firstPair.history && firstPair.history.length > 0) {
-                        const lastRecord = firstPair.history[firstPair.history.length - 1];
+                    // 优先选择2606-2606配对（PD2606 vs PAM2026），否则用第一个
+                    const targetPdPair = pdData.pairs['2606-2606'] || Object.values(pdData.pairs)[0];
+                    if (targetPdPair && targetPdPair.history && targetPdPair.history.length > 0) {
+                        const lastRecord = targetPdPair.history[targetPdPair.history.length - 1];
                         const pdGfexTimeEl = document.getElementById('pd-gfex-time');
                         const pdCmeTimeEl = document.getElementById('pd-cme-time');
                         if (pdGfexTimeEl) pdGfexTimeEl.textContent = lastRecord.date;
                         if (pdCmeTimeEl) pdCmeTimeEl.textContent = lastRecord.date;
                         // 更新价格
-                        if (firstPair.current) {
-                            marketData.gfex.PD2606 = firstPair.current.gfex_price;
-                            document.getElementById('pd-gfex').textContent = firstPair.current.gfex_price.toFixed(2);
-                            document.getElementById('pd-intl-usd').textContent = firstPair.current.cme_usd.toFixed(2);
-                            document.getElementById('pd-intl').textContent = firstPair.current.cme_cny.toFixed(2);
+                        if (targetPdPair.current) {
+                            marketData.gfex.PD2606 = targetPdPair.current.gfex_price;
+                            marketData.intl.XPD = targetPdPair.current.cme_usd;  // 动态更新国际价格
+                            document.getElementById('pd-gfex').textContent = targetPdPair.current.gfex_price.toFixed(2);
+                            document.getElementById('pd-intl-usd').textContent = targetPdPair.current.cme_usd.toFixed(2);
+                            document.getElementById('pd-intl').textContent = targetPdPair.current.cme_cny.toFixed(2);
                         }
                     }
                 }
@@ -2534,6 +2345,64 @@
             calculateArbitrage();
         }
 
+        // 更新资金分配计算
+        function updateCapitalAllocation() {
+            if (!selectedPair) return;
+
+            const totalCapital = parseFloat(document.getElementById('calc-total-capital').value) || 2000000;
+            const cmeRatio = parseFloat(document.getElementById('cme-ratio-slider').value) / 100;
+            const gfexRatio = 1 - cmeRatio;
+
+            const gfexAmount = totalCapital * gfexRatio;
+            const cmeAmountCny = totalCapital * cmeRatio;
+            const exchangeRate = 7.04;
+            const cmeAmountUsd = cmeAmountCny / exchangeRate;
+
+            // 持仓信息（3手）
+            const lots = 3;
+            const grams = lots * 1000;
+            const gfexPrice = selectedPair.gfexPrice;
+            const cmeUsd = selectedPair.cmeUsd;
+            const marginRate = 0.12; // 12%保证金
+
+            // 广期所：空单，价格上涨亏损
+            // 计算爆仓风险（按权益归零或维持保证金计算，这里按权益归零/强平线简单估算，更符合直觉）
+            // 实际上交易所会在权益 < 维持保证金时强平，维持保证金通常为保证金的0.7-0.8
+            // 用户反馈更倾向于 TotalCapital / Value 的简单算法
+            const gfexResistPct = (gfexAmount / (gfexPrice * grams)) * 100;
+            const gfexStopPrice = gfexPrice * (1 + gfexResistPct * 0.8 / 100); // 留20%安全边际
+
+            // CME：多单，价格下跌亏损（1盎司=31.1035克，1手=100盎司=3110.35克）
+            const cmeContracts = 1;
+            const cmeGrams = 3110.35 * cmeContracts;
+            // CME爆仓风险
+            const cmeResistPct = (cmeAmountUsd / (cmeUsd * cmeContracts * 100)) * 100;
+            const cmeStopPrice = cmeUsd * (1 - cmeResistPct * 0.8 / 100); // 留20%安全边际
+
+            // 格式化函数
+            const formatNum = (n) => n.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+            // 更新显示
+            document.getElementById('alloc-gfex-amount').innerHTML =
+                `¥${formatNum(gfexAmount)} <span style="font-size: 0.75rem; color: var(--text-muted);">(${(gfexRatio * 100).toFixed(0)}%)</span>`;
+            document.getElementById('alloc-gfex-resist').textContent = `可抗涨幅 +${gfexResistPct.toFixed(1)}% (¥${(gfexPrice * gfexResistPct / 100).toFixed(0)})`;
+
+            document.getElementById('alloc-cme-amount').innerHTML =
+                `$${formatNum(cmeAmountUsd)} <span style="font-size: 0.75rem; color: var(--text-muted);">(≈¥${formatNum(cmeAmountCny)}, ${(cmeRatio * 100).toFixed(0)}%)</span>`;
+            document.getElementById('alloc-cme-resist').textContent = `可抗跌幅 -${cmeResistPct.toFixed(1)}% ($${(cmeUsd * cmeResistPct / 100).toFixed(0)})`;
+
+            document.getElementById('stop-gfex').textContent = `¥${gfexStopPrice.toFixed(2)}`;
+            document.getElementById('stop-gfex-pct').textContent = `(+${(gfexResistPct * 0.8).toFixed(1)}%)`;
+            document.getElementById('stop-cme').textContent = `$${cmeStopPrice.toFixed(2)}`;
+            document.getElementById('stop-cme-pct').textContent = `(-${(cmeResistPct * 0.8).toFixed(1)}%)`;
+        }
+
+        // ========== 历史价差图表变量（需在调用前声明）==========
+        let spreadChart = null;
+        let currentCommodity = 'platinum';
+        let currentSpreadType = 'pct';
+        let cachedSpreadData = null;
+
         // 页面加载时初始化
         document.addEventListener('DOMContentLoaded', async function () {
             // 先尝试加载保存的手动数据
@@ -2547,10 +2416,61 @@
                 }
 
                 // 独立执行图表加载，互不影响
+                // 注意：spreadChart、currentCommodity等变量在下方定义
                 loadSpreadChart();
-                loadConvergenceChart();
+                loadSpreadRanking();
+
+                // 更新市场状态
+                updateMarketStatus();
             }, 500);
         });
+
+        // 更新市场状态
+        function updateMarketStatus() {
+            const now = new Date();
+            const day = now.getDay(); // 0=周日, 6=周六
+            const hour = now.getHours();
+            const minute = now.getMinutes();
+            const time = hour * 100 + minute;
+
+            // 广期所交易时间: 周一至周五 9:00-11:30, 13:30-15:00, 21:00-次日1:00
+            let gfexOpen = false;
+            if (day >= 1 && day <= 5) {
+                if ((time >= 900 && time <= 1130) ||
+                    (time >= 1330 && time <= 1500) ||
+                    (time >= 2100 && time <= 2359)) {
+                    gfexOpen = true;
+                }
+            }
+            // 周一凌晨不开（周日晚夜盘才开）
+            if (day >= 2 && day <= 5 && time >= 0 && time <= 100) {
+                gfexOpen = true;
+            }
+
+            // NYMEX交易时间（北京时间）: 周一6:00-周六5:00 几乎连续，每天5:00-6:00休市
+            let nymexOpen = false;
+            if (day >= 1 && day <= 5) {
+                // 周一到周五
+                if (time >= 600 || time < 500) {
+                    nymexOpen = true;
+                }
+            } else if (day === 6 && time < 500) {
+                // 周六凌晨5点前
+                nymexOpen = true;
+            }
+
+            // 更新广期所状态
+            const gfexDot = document.getElementById('gfex-dot');
+            const gfexStatus = document.getElementById('gfex-status');
+            if (gfexDot) gfexDot.style.background = gfexOpen ? 'var(--positive)' : 'var(--text-muted)';
+            if (gfexStatus) gfexStatus.textContent = gfexOpen ? '广期所 开盘' : '广期所 休市';
+
+            // 更新NYMEX状态
+            const nymexDot = document.getElementById('nymex-dot');
+            const nymexStatus = document.getElementById('nymex-status');
+            if (nymexDot) nymexDot.style.background = nymexOpen ? 'var(--positive)' : 'var(--text-muted)';
+            if (nymexStatus) nymexStatus.textContent = nymexOpen ? 'NYMEX 开盘' : 'NYMEX 休市';
+        }
 
         // 加载保存的手动价格数据
         async function loadSavedPrices() {
@@ -2597,186 +2517,375 @@
             }
         }
 
-        // 监听输入变化
-        document.getElementById('calc-lots').addEventListener('input', calculateArbitrage);
+        // ========== 套利分析缓存 ==========
+        let cachedPairs = { pt: [], pd: [] };
+        let selectedPair = null;
 
-        // ========== 合约收敛分析图表 ==========
-        let convergenceChart = null;
-        let convergenceContracts = []; // 缓存合约数据
-        let selectedContract = 0; // 当前高亮的合约索引
+        // ========== 价差排行榜 ==========
+        async function loadSpreadRanking() {
+            const container = document.getElementById('spread-cards');
+            if (!container) return;
 
-        async function loadConvergenceChart() {
-            const chartDom = document.getElementById('convergence-chart');
-            const statsDom = document.getElementById('convergence-stats');
-            const tabsDom = document.getElementById('convergence-tabs');
-            if (!chartDom) return;
-
-            chartDom.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: var(--text-muted);">📊 加载收敛数据中...</div>';
+            container.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-muted);">📊 加载中...</div>';
 
             try {
-                const response = await fetch('contract_convergence_data.json?t=' + Date.now());
-                if (!response.ok) throw new Error('数据文件不存在，请先运行 fetch_contract_convergence.py');
+                // 加载铂金和钯金的所有配对数据
+                const [ptRes, pdRes] = await Promise.all([
+                    fetch('platinum_all_pairs.json?t=' + Date.now()),
+                    fetch('palladium_all_pairs.json?t=' + Date.now())
+                ]);
 
-                const data = await response.json();
-                console.log('Convergence Data:', data);
+                if (!ptRes.ok || !pdRes.ok) throw new Error('数据加载失败');
 
-                if (!data.contracts || data.contracts.length === 0) {
-                    throw new Error('无合约数据');
+                const ptData = await ptRes.json();
+                const pdData = await pdRes.json();
+
+                // 收集铂金配对
+                const ptPairs = [];
+                for (const [pairName, pair] of Object.entries(ptData.pairs)) {
+                    if (pair.current) {
+                        // 获取价格时间：history最后一条的date
+                        const priceTime = pair.history && pair.history.length > 0
+                            ? pair.history[pair.history.length - 1].date
+                            : ptData.update_time;
+                        ptPairs.push({
+                            pairName, priceTime,
+                            gfexContract: pair.gfex_contract,
+                            cmeContract: pair.cme_contract,
+                            gfexPrice: pair.current.gfex_price,
+                            cmeUsd: pair.current.cme_usd,
+                            cmeCny: pair.current.cme_cny,
+                            spread: pair.current.spread,
+                            spreadPct: pair.current.spread_pct
+                        });
+                    }
                 }
+                ptPairs.sort((a, b) => b.spreadPct - a.spreadPct);
 
-                convergenceContracts = data.contracts;
-
-                // 生成选择按钮
-                if (tabsDom) {
-                    const colors = ['#f59e0b', '#3b82f6', '#10b981', '#ef4444', '#8b5cf6', '#ec4899'];
-                    let tabsHtml = '';
-                    data.contracts.forEach((c, idx) => {
-                        const isActive = idx === selectedContract;
-                        tabsHtml += `<button onclick="selectConvergenceContract(${idx})" 
-                            style="padding: 5px 12px; border: 2px solid ${colors[idx % colors.length]}; 
-                            border-radius: 6px; cursor: pointer; font-size: 0.75rem; font-weight: 600;
-                            background: ${isActive ? colors[idx % colors.length] : 'transparent'}; 
-                            color: ${isActive ? '#000' : colors[idx % colors.length]};">${c.symbol}</button>`;
-                    });
-                    tabsDom.innerHTML = tabsHtml;
+                // 收集钯金配对
+                const pdPairs = [];
+                for (const [pairName, pair] of Object.entries(pdData.pairs)) {
+                    if (pair.current) {
+                        const priceTime = pair.history && pair.history.length > 0
+                            ? pair.history[pair.history.length - 1].date
+                            : pdData.update_time;
+                        pdPairs.push({
+                            pairName, priceTime,
+                            gfexContract: pair.gfex_contract,
+                            cmeContract: pair.cme_contract,
+                            gfexPrice: pair.current.gfex_price,
+                            cmeUsd: pair.current.cme_usd,
+                            cmeCny: pair.current.cme_cny,
+                            spread: pair.current.spread,
+                            spreadPct: pair.current.spread_pct
+                        });
+                    }
                 }
+                pdPairs.sort((a, b) => b.spreadPct - a.spreadPct);
 
-                renderConvergenceChart(chartDom, data.contracts);
-
-                // 更新统计
-                if (statsDom) {
-                    let html = '';
-                    data.contracts.forEach(c => {
-                        const color = c.convergence > 0 ? 'var(--positive)' : 'var(--negative)';
-                        html += `
-                            <div style="background: var(--bg-secondary); padding: 12px; border-radius: 8px; text-align: center;">
-                                <div style="font-size: 0.75rem; color: var(--text-muted);">${c.symbol}</div>
-                                <div style="font-size: 1rem; font-weight: 600; color: ${color};">
-                                    ${c.start_spread.toFixed(1)}% → ${c.end_spread.toFixed(1)}%
-                                </div>
-                                <div style="font-size: 0.7rem; color: ${color};">收敛 ${c.convergence > 0 ? '+' : ''}${c.convergence.toFixed(1)}%</div>
+                // 生成行HTML的函数
+                function renderRow(pair, idx, icon, iconBg) {
+                    const spreadClass = pair.spread >= 0 ? 'positive' : 'negative';
+                    const spreadSign = pair.spread >= 0 ? '+' : '';
+                    return `
+                        <div style="display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--bg-secondary); border-radius: 6px; margin-bottom: 4px;">
+                            <div style="background: var(--accent-gold); color: #000; padding: 1px 5px; border-radius: 3px; font-size: 0.6rem; font-weight: bold;">#${idx + 1}</div>
+                            <div style="width: 22px; height: 22px; border-radius: 50%; background: ${iconBg}; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.6rem;">${icon}</div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; font-size: 0.8rem;">${pair.pairName}</div>
+                                <div style="font-size: 0.6rem; color: var(--text-muted);">${pair.gfexContract} | ${pair.cmeContract}</div>
                             </div>
-                        `;
-                    });
-                    statsDom.innerHTML = html;
+                            <div style="text-align: right; font-size: 0.65rem; min-width: 75px;">
+                                <div style="color: var(--accent-gold);">广期所 ${pair.gfexPrice.toFixed(2)}</div>
+                                <div style="color: var(--info);">CME ${pair.cmeUsd.toFixed(1)} → ${pair.cmeCny.toFixed(2)}</div>
+                            </div>
+                            <div style="text-align: right; font-size: 0.7rem; min-width: 50px;">
+                                <div style="color: var(--${spreadClass});">${spreadSign}${pair.spread.toFixed(1)}</div>
+                                <div style="font-weight: 700; color: var(--${spreadClass});">${spreadSign}${pair.spreadPct.toFixed(2)}%</div>
+                            </div>
+                            <div style="font-size: 0.55rem; color: var(--text-muted); min-width: 80px; text-align: right;">${pair.priceTime}</div>
+                        </div>
+                    `;
                 }
+
+                // 生成两列布局HTML
+                const defaultShow = 5;
+                let html = '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">';
+
+                // 左列：铂金
+                html += '<div>';
+                html += `<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="font-weight: 600; color: #a78bfa;">🔷 铂金 Platinum</span>
+                    ${ptPairs.length > defaultShow ? `<button id="pt-expand-btn" onclick="togglePtExpand()" style="padding: 2px 8px; background: transparent; border: 1px solid var(--text-muted); border-radius: 4px; color: var(--text-muted); cursor: pointer; font-size: 0.65rem;">展开全部 (${ptPairs.length})</button>` : ''}
+                </div>`;
+                html += '<div id="pt-list">';
+                ptPairs.slice(0, defaultShow).forEach((pair, idx) => { html += renderRow(pair, idx, 'Pt', '#a78bfa'); });
+                html += '</div>';
+                html += `<div id="pt-list-hidden" style="display: none;">`;
+                ptPairs.slice(defaultShow).forEach((pair, idx) => { html += renderRow(pair, idx + defaultShow, 'Pt', '#a78bfa'); });
+                html += '</div>';
+                html += '</div>';
+
+                // 右列：钯金
+                html += '<div>';
+                html += `<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="font-weight: 600; color: #f472b6;">🔶 钯金 Palladium</span>
+                    ${pdPairs.length > defaultShow ? `<button id="pd-expand-btn" onclick="togglePdExpand()" style="padding: 2px 8px; background: transparent; border: 1px solid var(--text-muted); border-radius: 4px; color: var(--text-muted); cursor: pointer; font-size: 0.65rem;">展开全部 (${pdPairs.length})</button>` : ''}
+                </div>`;
+                html += '<div id="pd-list">';
+                pdPairs.slice(0, defaultShow).forEach((pair, idx) => { html += renderRow(pair, idx, 'Pd', '#f472b6'); });
+                html += '</div>';
+                html += `<div id="pd-list-hidden" style="display: none;">`;
+                pdPairs.slice(defaultShow).forEach((pair, idx) => { html += renderRow(pair, idx + defaultShow, 'Pd', '#f472b6'); });
+                html += '</div>';
+                html += '</div>';
+
+                html += '</div>';
+
+                container.innerHTML = html;
+                console.log(`已加载铂金${ptPairs.length}个、钯金${pdPairs.length}个配对`);
+
+                // 缓存配对数据并生成套利分析选项块
+                cachedPairs.pt = ptPairs;
+                cachedPairs.pd = pdPairs;
+                generatePairTabs();
 
             } catch (error) {
-                console.error('加载收敛数据失败:', error);
-                chartDom.innerHTML = `<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--text-muted);">
-                    <div style="font-size: 2rem; margin-bottom: 10px;">⚠️</div>
-                    <div style="color: #ef4444;">${error.message}</div>
-                </div>`;
+                console.error('加载价差排行失败:', error);
+                container.innerHTML = `<div style="text-align: center; padding: 40px; color: var(--negative);">❌ ${error.message}</div>`;
             }
         }
 
-        function selectConvergenceContract(idx) {
-            selectedContract = idx;
-            // 更新按钮样式
-            const tabsDom = document.getElementById('convergence-tabs');
-            const colors = ['#f59e0b', '#3b82f6', '#10b981', '#ef4444', '#8b5cf6', '#ec4899'];
-            if (tabsDom && convergenceContracts.length > 0) {
-                let tabsHtml = '';
-                convergenceContracts.forEach((c, i) => {
-                    const isActive = i === selectedContract;
-                    tabsHtml += `<button onclick="selectConvergenceContract(${i})" 
-                        style="padding: 5px 12px; border: 2px solid ${colors[i % colors.length]}; 
-                        border-radius: 6px; cursor: pointer; font-size: 0.75rem; font-weight: 600;
-                        background: ${isActive ? colors[i % colors.length] : 'transparent'}; 
-                        color: ${isActive ? '#000' : colors[i % colors.length]};">${c.symbol}</button>`;
-                });
-                tabsDom.innerHTML = tabsHtml;
-            }
-            // 重新渲染图表
-            const chartDom = document.getElementById('convergence-chart');
-            if (chartDom && convergenceContracts.length > 0) {
-                renderConvergenceChart(chartDom, convergenceContracts);
+        // 铂金展开/收起
+        function togglePtExpand() {
+            const hidden = document.getElementById('pt-list-hidden');
+            const btn = document.getElementById('pt-expand-btn');
+            if (hidden.style.display === 'none') {
+                hidden.style.display = 'block';
+                btn.textContent = '收起';
+            } else {
+                hidden.style.display = 'none';
+                btn.textContent = '展开全部';
             }
         }
 
-        function renderConvergenceChart(chartDom, contracts) {
-            if (convergenceChart) {
-                try { convergenceChart.dispose(); } catch (e) { }
+        // 钯金展开/收起
+        function togglePdExpand() {
+            const hidden = document.getElementById('pd-list-hidden');
+            const btn = document.getElementById('pd-expand-btn');
+            if (hidden.style.display === 'none') {
+                hidden.style.display = 'block';
+                btn.textContent = '收起';
+            } else {
+                hidden.style.display = 'none';
+                btn.textContent = '展开全部';
+            }
+        }
+
+        // ========== 套利分析选项块 ==========
+
+        // 生成配对选项块（在loadSpreadRanking后调用）
+        function generatePairTabs() {
+            const container = document.getElementById('calc-pair-tabs');
+            if (!container) return;
+
+            // 分别生成铂金和钯金选项块（各取前16个）
+            const ptTop = cachedPairs.pt.slice(0, 16);
+            const pdTop = cachedPairs.pd.slice(0, 16);
+
+            let html = '';
+
+            // 铂金下拉框
+            html += `<div style="display: flex; align-items: center; gap: 8px;">
+                <span id="pt-label" style="font-size: 0.9rem; font-weight: 700; padding: 4px 12px; border-radius: 6px; transition: all 0.3s; color: #64748b;">铂金</span>
+                <select id="pt-pair-select" onchange="selectPairTab('pt', this.value)" 
+                    style="background: var(--bg-primary); color: var(--text-secondary); border: 1px solid #334155; padding: 4px 8px; border-radius: 6px; font-size: 0.9rem; cursor: pointer; outline: none; min-width: 140px; height: 32px; transition: all 0.3s;">
+                    <option value="" disabled selected>选择合约配对</option>
+                    ${ptTop.map(pair => `<option value="${pair.pairName}">${pair.pairName} +${pair.spreadPct.toFixed(0)}%</option>`).join('')}
+                </select>
+            </div>`;
+
+            // 钯金下拉框
+            html += `<div style="display: flex; align-items: center; gap: 8px;">
+                <span id="pd-label" style="font-size: 0.9rem; font-weight: 700; padding: 4px 12px; border-radius: 6px; transition: all 0.3s; color: #64748b;">钯金</span>
+                <select id="pd-pair-select" onchange="selectPairTab('pd', this.value)" 
+                    style="background: var(--bg-primary); color: var(--text-secondary); border: 1px solid #334155; padding: 4px 8px; border-radius: 6px; font-size: 0.9rem; cursor: pointer; outline: none; min-width: 140px; height: 32px; transition: all 0.3s;">
+                    <option value="" disabled>选择合约配对</option>
+                    ${pdTop.map(pair => `<option value="${pair.pairName}">${pair.pairName} +${pair.spreadPct.toFixed(0)}%</option>`).join('')}
+                </select>
+            </div>`;
+
+            container.innerHTML = html;
+
+            // 默认选中铂金第一个（价差最高的）
+            if (ptTop.length > 0) {
+                const defaultPair = ptTop[0].pairName;
+                document.getElementById('pt-pair-select').value = defaultPair;
+                selectPairTab('pt', defaultPair);
+            }
+        }
+
+        // 选择配对
+        function selectPairTab(type, pairName) {
+            const pairs = type === 'pt' ? cachedPairs.pt : cachedPairs.pd;
+            selectedPair = pairs.find(p => p.pairName === pairName);
+            if (!selectedPair) return;
+
+            // 互斥逻辑及样式更新：参照用户截图风格
+            // 选中态：Label背景色+黑字，Select对应边框色
+            // 未选态：Label默认色，Select灰边框
+            const ptLabel = document.getElementById('pt-label');
+            const ptSelect = document.getElementById('pt-pair-select');
+
+            const pdLabel = document.getElementById('pd-label');
+            const pdSelect = document.getElementById('pd-pair-select');
+
+            if (type === 'pt') {
+                // 设置钯金为未选中
+                if (pdSelect) {
+                    pdSelect.value = "";
+                    pdSelect.style.borderColor = '#334155';
+                    pdSelect.style.color = '#64748b';
+                }
+                if (pdLabel) {
+                    pdLabel.style.background = 'transparent';
+                    pdLabel.style.color = '#64748b';
+                }
+
+                // 设置铂金为选中
+                if (ptSelect) {
+                    if (ptSelect.value !== pairName) ptSelect.value = pairName;
+                    ptSelect.style.borderColor = '#fbbf24'; // 金色边框
+                    ptSelect.style.color = '#fbbf24';
+                }
+                if (ptLabel) {
+                    ptLabel.style.background = '#fbbf24'; // 金色背景
+                    ptLabel.style.color = '#000'; // 黑字
+                }
+
+            } else {
+                // 设置铂金为未选中
+                if (ptSelect) {
+                    ptSelect.value = "";
+                    ptSelect.style.borderColor = '#334155';
+                    ptSelect.style.color = '#64748b';
+                }
+                if (ptLabel) {
+                    ptLabel.style.background = 'transparent';
+                    ptLabel.style.color = '#64748b';
+                }
+
+                // 设置钯金为选中
+                if (pdSelect) {
+                    if (pdSelect.value !== pairName) pdSelect.value = pairName;
+                    // 暂时统一用金色高亮，符合“选中状态”的统一隐喻
+                    pdSelect.style.borderColor = '#fbbf24';
+                    pdSelect.style.color = '#fbbf24';
+                }
+                if (pdLabel) {
+                    pdLabel.style.background = '#fbbf24';
+                    pdLabel.style.color = '#000';
+                }
             }
 
-            convergenceChart = echarts.init(chartDom, 'dark');
+            // 更新标题旁的选中信息
+            const infoSpan = document.getElementById('selected-pair-info');
+            if (infoSpan) {
+                // e.g. "已选中：铂金 2610-2601"
+                infoSpan.innerHTML = `已选中：<span style="color: ${type === 'pt' ? '#a78bfa' : '#f472b6'}">${type === 'pt' ? '铂金' : '钯金'}</span> <span style="font-family: monospace; color: var(--text-primary);">${pairName}</span>`;
+            }
 
-            const colors = ['#f59e0b', '#3b82f6', '#10b981', '#ef4444', '#8b5cf6', '#ec4899'];
-            const series = [];
-            const legendData = [];
+            updateArbitrageAnalysis(selectedPair);
+            updateCapitalAllocation();
+        }
 
-            contracts.forEach((contract, idx) => {
-                legendData.push(contract.symbol);
+        // 更新套利分析显示
+        function updateArbitrageAnalysis(pair) {
+            if (!pair) return;
 
-                // 将日期转换为"距交割天数"（负数表示还有多少天）
-                const totalDays = contract.history.length;
-                const dataPoints = contract.history.map((item, i) => {
-                    const daysToDelivery = i - totalDays; // 负数到0
-                    return [daysToDelivery, item.spread_pct];
-                });
+            const lots = 3; // 3手
+            const grams = lots * 1000; // 3000克
+            const spread = pair.spread;
+            const avgSpreadPct = pair.avgSpreadPct || 16; // 默认均值16%
+            const avgSpread = pair.cmeCny * avgSpreadPct / 100;
 
-                const isHighlighted = idx === selectedContract;
+            // 完全收敛收益
+            const fullProfit = spread * grams;
+            const fullReturnPct = (fullProfit / (pair.gfexPrice * grams * 0.12)) * 100; // 假设12%保证金
 
-                series.push({
-                    name: contract.symbol,
-                    type: 'line',
-                    data: dataPoints,
-                    smooth: true,
-                    symbol: 'none',
-                    lineStyle: {
-                        color: colors[idx % colors.length],
-                        width: isHighlighted ? 3 : 1.5,
-                        opacity: isHighlighted ? 1 : 0.25
-                    },
-                    itemStyle: { color: colors[idx % colors.length] },
-                    z: isHighlighted ? 10 : 1
-                });
-            });
+            // 收敛至均值收益
+            const avgProfit = (spread - avgSpread) * grams;
+            const avgReturnPct = (avgProfit / (pair.gfexPrice * grams * 0.12)) * 100;
 
-            const option = {
-                backgroundColor: 'transparent',
-                tooltip: {
-                    trigger: 'axis',
-                    formatter: function (params) {
-                        let html = `距交割 ${Math.abs(params[0].value[0])} 天<br/>`;
-                        params.forEach(p => {
-                            html += `${p.marker} ${p.seriesName}: ${p.value[1].toFixed(2)}%<br/>`;
-                        });
-                        return html;
-                    }
-                },
-                legend: {
-                    data: legendData,
-                    bottom: 0,
-                    textStyle: { color: '#94a3b8', fontSize: 11 }
-                },
-                grid: { left: '3%', right: '4%', bottom: '15%', top: '10%', containLabel: true },
-                xAxis: {
-                    type: 'value',
-                    name: '距交割天数',
-                    nameTextStyle: { color: '#64748b' },
-                    axisLine: { lineStyle: { color: '#2d3748' } },
-                    axisLabel: { color: '#64748b', formatter: '{value}' },
-                    splitLine: { lineStyle: { color: '#2d3748', type: 'dashed' } }
-                },
-                yAxis: {
-                    type: 'value',
-                    name: '价差 (%)',
-                    nameTextStyle: { color: '#64748b' },
-                    axisLine: { lineStyle: { color: '#2d3748' } },
-                    axisLabel: { color: '#64748b', formatter: '{value}%' },
-                    splitLine: { lineStyle: { color: '#2d3748', type: 'dashed' } }
-                },
-                series: series
-            };
+            // 外汇波动影响：CME以USD计价，人民币贬值会增加CME换算价格
+            // 人民币贬值1% 意味着 CME价格换算后升高约1%，对冲做多端的人民币价值增加
+            const fxImpact = pair.cmeCny * grams * 0.01;
 
-            convergenceChart.setOption(option);
-            window.addEventListener('resize', () => convergenceChart && convergenceChart.resize());
+            // 敞口影响：110克敞口 × 10%价格波动
+            const exposureGrams = 110; // 固定敞口
+            const exposureImpact = exposureGrams * pair.gfexPrice * 0.10; // 10%价格波动
+
+            // 估算手续费 (双边) - 假设约200元或按比例
+            // 这里简单按总价值万分之一估算，或者直接给个固定参考值
+            // 假设单边万分之0.5，双边万分之1 (CME + GFEX)
+            // GFEX 3000g * price * 0.0001
+            const totalValue = (pair.gfexPrice * grams) + (pair.cmeCny * grams);
+            const tradingFee = totalValue * 0.0002; // 双边万分之二 (保守估计)
+
+            // 滑点成本: 按总价值的0.1%估算
+            const slippageCost = totalValue * 0.001;
+
+            // 资金成本: 假设保证金比例12%, 年化4%, 持仓天数根据合约计算
+            // 从 pairName 解析持仓天数 (如 "2610-2601" 表示 Dec 2026 - Jan 2026, 约11个月)
+            // 简化: 假设平均持仓3个月
+            const marginRatio = 0.12;
+            const annualRate = 0.04;
+            const holdingMonths = 3; // 平均持仓月数
+            const capitalCost = (totalValue * marginRatio) * (annualRate * holdingMonths / 12);
+
+            // 更新显示
+            document.getElementById('result-gross-profit').textContent = `¥${fullProfit.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
+            document.getElementById('gross-profit-detail').textContent = `价差${spread.toFixed(1)}元/克 × ${grams}克`;
+
+            // 更新费用行
+            const tradingFeeEl = document.getElementById('result-trading-fee');
+            if (tradingFeeEl) tradingFeeEl.textContent = `¥${tradingFee.toFixed(0)}`;
+
+            const slippageEl = document.getElementById('result-slippage');
+            if (slippageEl) slippageEl.textContent = `¥${slippageCost.toFixed(0)}`;
+
+            document.getElementById('result-avg-profit').textContent = avgProfit > 0
+                ? `¥${avgProfit.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`
+                : `-¥${Math.abs(avgProfit).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
+            document.getElementById('avg-profit-detail').textContent = `价差${spread.toFixed(1)}元/克 × ${grams}克`;
+
+            // 更新底部红色条件文本
+            const conditionAvgEl = document.getElementById('result-condition-avg');
+            if (conditionAvgEl) conditionAvgEl.textContent = `若价差收敛至均值 ${avgSpreadPct.toFixed(0)}%`;
+
+            document.getElementById('result-fx-impact').textContent = `±¥${fxImpact.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
+
+            document.getElementById('result-exposure-impact').textContent = `±¥${exposureImpact.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
+            document.getElementById('exposure-impact-detail').textContent = `敞口${exposureGrams}克 × 10%波动`;
         }
 
         // ========== 历史价差图表 ==========
-        let spreadChart = null;
-        let currentCommodity = 'platinum'; // 默认铂金
+        // 变量已在前面声明：spreadChart, currentCommodity, currentSpreadType, cachedSpreadData
+
+        // 价差类型切换函数
+        function switchSpreadType(type) {
+            currentSpreadType = type;
+
+            // 更新按钮样式
+            document.getElementById('spread-type-pct').style.background = type === 'pct' ? 'var(--accent-gold)' : 'transparent';
+            document.getElementById('spread-type-pct').style.color = type === 'pct' ? '#000' : 'var(--text-muted)';
+            document.getElementById('spread-type-abs').style.background = type === 'abs' ? 'var(--accent-gold)' : 'transparent';
+            document.getElementById('spread-type-abs').style.color = type === 'abs' ? '#000' : 'var(--text-muted)';
+
+            // 重新加载图表
+            loadSpreadChart();
+        }
+
 
         // 品种切换函数
         function switchCommodity(commodity) {
@@ -2796,8 +2905,12 @@
             // 显示/隐藏配对选择器
             const ptPairSelect = document.getElementById('platinum-pair-select');
             const pdPairSelect = document.getElementById('palladium-pair-select');
+            const auPairSelect = document.getElementById('gold-pair-select');
+            const agPairSelect = document.getElementById('silver-pair-select');
             if (ptPairSelect) ptPairSelect.style.display = (commodity === 'platinum') ? 'block' : 'none';
             if (pdPairSelect) pdPairSelect.style.display = (commodity === 'palladium') ? 'block' : 'none';
+            if (auPairSelect) auPairSelect.style.display = (commodity === 'gold') ? 'block' : 'none';
+            if (agPairSelect) agPairSelect.style.display = (commodity === 'silver') ? 'block' : 'none';
 
             // 更新副标题
             const subtitles = {
@@ -2837,6 +2950,24 @@
             loadSpreadChart();
         }
 
+        // 黄金合约切换函数
+        function switchGoldPair(contractName) {
+            if (currentCommodity !== 'gold') {
+                switchCommodity('gold');
+            }
+            document.getElementById('au-pair-label').textContent = contractName.replace('AU', '');
+            loadSpreadChart();
+        }
+
+        // 白银合约切换函数
+        function switchSilverPair(contractName) {
+            if (currentCommodity !== 'silver') {
+                switchCommodity('silver');
+            }
+            document.getElementById('ag-pair-label').textContent = contractName.replace('AG', '');
+            loadSpreadChart();
+        }
+
         async function loadSpreadChart() {
             const chartDom = document.getElementById('spread-chart');
             if (!chartDom) return;
@@ -2873,7 +3004,9 @@
                     chartData = {
                         dates: data.history.map(item => item.date),
                         spreads: data.history.map(item => item.spread_pct),
+                        spreadsAbs: data.history.map(item => item.spread), // 绝对值价差
                         current: data.current.spread_pct,
+                        currentAbs: data.current.spread,
                         avg: data.stats.avg_spread_pct,
                         max: data.stats.max_spread_pct,
                         min: data.stats.min_spread_pct
@@ -2899,13 +3032,42 @@
                     chartData = {
                         dates: data.history.map(item => item.date),
                         spreads: data.history.map(item => item.spread_pct),
+                        spreadsAbs: data.history.map(item => item.spread), // 绝对值价差
                         current: data.current.spread_pct,
+                        currentAbs: data.current.spread,
                         avg: data.stats.avg_spread_pct,
                         max: data.stats.max_spread_pct,
                         min: data.stats.min_spread_pct
                     };
+                } else if (currentCommodity === 'gold' || currentCommodity === 'silver') {
+                    // 黄金/白银：从收敛数据文件加载指定合约
+                    const response = await fetch('contract_convergence_data.json?t=' + Date.now());
+                    if (!response.ok) throw new Error(`收敛数据文件请求失败 (${response.status})`);
+                    const convergenceData = await response.json();
+
+                    // 获取当前选中的合约
+                    const selectId = currentCommodity === 'gold' ? 'gold-pair-select' : 'silver-pair-select';
+                    const pairSelect = document.getElementById(selectId);
+                    const selectedContract = pairSelect ? pairSelect.value : (currentCommodity === 'gold' ? 'AU2412' : 'AG2412');
+
+                    // 查找对应合约数据
+                    const contractData = convergenceData.contracts.find(c => c.symbol === selectedContract);
+                    if (!contractData) throw new Error(`未找到合约 ${selectedContract} 的数据`);
+
+                    // 更新副标题
+                    const metalName = currentCommodity === 'gold' ? '黄金' : '白银';
+                    document.getElementById('chart-subtitle').textContent = `上期所 ${selectedContract} vs COMEX ${metalName}`;
+
+                    chartData = {
+                        dates: contractData.history.map(item => item.date),
+                        spreads: contractData.history.map(item => item.spread_pct),
+                        current: contractData.end_spread,
+                        avg: (contractData.start_spread + contractData.end_spread) / 2,
+                        max: Math.max(...contractData.history.map(h => h.spread_pct)),
+                        min: Math.min(...contractData.history.map(h => h.spread_pct))
+                    };
                 } else {
-                    // 黄金/白银/铜：使用新数据文件
+                    // 铜：使用原有数据文件
                     const response = await fetch('precious_metals_spread_history.json?t=' + Date.now());
                     if (!response.ok) throw new Error(`数据文件请求失败 (${response.status})`);
                     data = await response.json();
@@ -3133,11 +3295,17 @@
 
             const commodityNames = {
                 'platinum': '铂金',
+                'palladium': '钯金',
                 'gold': '黄金',
                 'silver': '白银',
                 'copper': '铜'
             };
-            const seriesName = (commodityNames[currentCommodity] || '价差') + '价差';
+
+            // 根据类型选择数据
+            const isAbsMode = currentSpreadType === 'abs';
+            const displayData = isAbsMode ? (chartData.spreadsAbs || chartData.spreads) : chartData.spreads;
+            const unit = isAbsMode ? '元/克' : '%';
+            const seriesName = (commodityNames[currentCommodity] || '价差') + (isAbsMode ? '价差' : '溢价');
 
             const option = {
                 backgroundColor: 'transparent',
@@ -3149,7 +3317,9 @@
                     textStyle: { color: '#f0f4f8' },
                     formatter: function (params) {
                         const p = params[0];
-                        return `${p.axisValue}<br/>${p.marker} ${seriesName}: <span style="font-weight:bold;color:${p.value >= 0 ? '#22c55e' : '#ef4444'}">${p.value >= 0 ? '+' : ''}${p.value.toFixed(2)}%</span>`;
+                        const val = p.value;
+                        const formatted = isAbsMode ? val.toFixed(2) + '元/克' : (val >= 0 ? '+' : '') + val.toFixed(2) + '%';
+                        return `${p.axisValue}<br/>${p.marker} ${seriesName}: <span style="font-weight:bold;color:${val >= 0 ? '#22c55e' : '#ef4444'}">${val >= 0 ? '+' : ''}${formatted}</span>`;
                     }
                 },
                 legend: {
@@ -3173,17 +3343,17 @@
                 },
                 yAxis: {
                     type: 'value',
-                    name: '价差 (%)',
+                    name: isAbsMode ? '价差 (元/克)' : '价差 (%)',
                     nameTextStyle: { color: '#64748b' },
                     axisLine: { lineStyle: { color: '#2d3748' } },
-                    axisLabel: { color: '#64748b', formatter: '{value}%' },
+                    axisLabel: { color: '#64748b', formatter: isAbsMode ? '{value}' : '{value}%' },
                     splitLine: { lineStyle: { color: '#2d3748', type: 'dashed' } }
                 },
                 series: [
                     {
                         name: seriesName,
                         type: 'line',
-                        data: chartData.spreads,
+                        data: displayData,
                         smooth: true,
                         symbol: 'circle',
                         symbolSize: 3,
