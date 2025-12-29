@@ -1,0 +1,15 @@
+{
+  "webhook_url": "https://fwalert.com/eb514a7b-e4a5-4c29-86f7-10dc396ab530",
+  "thresholds": {
+    "platinum": {
+      "min": 5,
+      "max": 25
+    },
+    "palladium": {
+      "min": 5,
+      "max": 25
+    }
+  },
+  "cooldown_minutes": 60,
+  "enabled": true
+}

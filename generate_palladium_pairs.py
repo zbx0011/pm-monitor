@@ -19,6 +19,7 @@ from datetime import datetime
 from tvDatafeed import TvDatafeed, Interval
 import time
 from database import save_pair_history, get_pair_history
+from alert_manager import check_and_alert
 
 OZ_TO_GRAM = 31.1035
 RATE = 7.04
@@ -187,6 +188,15 @@ def main():
                     }
                 
                 print(f"  [OK] {pair_name}: {len(pair_data['history'])} 条数据, 当前价差: {latest['spread_pct']:+.2f}%")
+                
+                # 检查报警
+                check_and_alert(
+                    metal='palladium',
+                    pair_name=pair_name,
+                    spread_pct=latest['spread_pct'],
+                    current_gfex=latest['gfex_price'],
+                    current_cme=latest['cme_cny']
+                )
     
     # 保存所有配对数据到JSON
     output = {
