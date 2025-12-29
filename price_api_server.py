@@ -91,6 +91,8 @@ class PriceAPIHandler(SimpleHTTPRequestHandler):
             self.send_pairs_data('palladium')
         elif self.path.startswith('/api/pair-history'):
             self.send_pair_history()
+        elif self.path == '/api/alert-config':
+            self.send_alert_config()
         else:
             super().do_GET()
     
@@ -99,6 +101,8 @@ class PriceAPIHandler(SimpleHTTPRequestHandler):
             self.save_manual_prices()
         elif self.path == '/api/refresh-data':
             self.trigger_data_refresh()
+        elif self.path == '/api/alert-config':
+            self.save_alert_config()
         else:
             self.send_response(404)
             self.end_headers()
@@ -123,6 +127,62 @@ class PriceAPIHandler(SimpleHTTPRequestHandler):
             
         except Exception as e:
             print(f"更新过程出错: {e}")
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': False, 'error': str(e)}).encode('utf-8'))
+
+    def send_alert_config(self):
+        """发送警报配置"""
+        try:
+            config_file = 'alert_config.json'
+            if os.path.exists(config_file):
+                with open(config_file, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+            else:
+                config = {
+                    'webhook_url': '',
+                    'thresholds': {'platinum': {'min': 5, 'max': 25}, 'palladium': {'min': 5, 'max': 25}},
+                    'cooldown_minutes': 60,
+                    'enabled': False
+                }
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps(config, ensure_ascii=False).encode('utf-8'))
+        except Exception as e:
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps({'error': str(e)}).encode('utf-8'))
+
+    def save_alert_config(self):
+        """保存警报配置"""
+        try:
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            new_config = json.loads(post_data.decode('utf-8'))
+            
+            # 读取现有配置以保留 webhook_url（前端不应修改）
+            config_file = 'alert_config.json'
+            if os.path.exists(config_file):
+                with open(config_file, 'r', encoding='utf-8') as f:
+                    existing = json.load(f)
+                # 保留 webhook_url
+                new_config['webhook_url'] = existing.get('webhook_url', '')
+            
+            with open(config_file, 'w', encoding='utf-8') as f:
+                json.dump(new_config, f, ensure_ascii=False, indent=2)
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': True, 'message': '配置已保存'}).encode('utf-8'))
+        except Exception as e:
             self.send_response(500)
             self.send_header('Content-Type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')
