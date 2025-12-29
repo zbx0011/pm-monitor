@@ -376,8 +376,8 @@ if __name__ == '__main__':
     print("=" * 50)
     print("=" * 50)
     
-    # 启动自动刷新线程 (每10分钟=600秒)
-    refresh_thread = threading.Thread(target=auto_refresh_scheduler, args=(600,), daemon=True)
+    # 启动自动刷新线程 (每2分钟=120秒)
+    refresh_thread = threading.Thread(target=auto_refresh_scheduler, args=(120,), daemon=True)
     refresh_thread.start()
     
     server = HTTPServer(('', 8080), PriceAPIHandler)
