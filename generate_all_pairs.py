@@ -51,8 +51,9 @@ def fetch_gfex_data(symbol):
 def fetch_cme_data(tv, symbol):
     """获取CME分钟数据"""
     try:
+        # 获取更多历史数据以匹配国内数据长度 (约2-3天 -> 10天)
         df = tv.get_hist(symbol=symbol, exchange='NYMEX', 
-                        interval=Interval.in_1_minute, n_bars=500)
+                        interval=Interval.in_1_minute, n_bars=2500)
         if df is not None:
             df = df.sort_index()
         return df
