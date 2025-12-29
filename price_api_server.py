@@ -11,9 +11,72 @@ from datetime import datetime
 import pandas as pd
 import os
 from database import get_all_pairs, get_pair_history
+import subprocess
+import platform
+import threading
+import time
 
 # 手动数据存储文件
+# 手动数据存储文件
 MANUAL_DATA_FILE = 'manual_prices.json'
+
+def run_data_sync():
+    """执行数据同步（Windows运行脚本，Linux拉取代码）"""
+    global last_refresh_time
+    
+    is_windows = platform.system() == 'Windows'
+    python_cmd = 'python' if is_windows else 'python3'
+    
+    timestamp = datetime.now().strftime('%H:%M:%S')
+    print(f"[{timestamp}] 开始执行数据同步...")
+    
+    try:
+        if is_windows:
+            # Windows本地：运行数据采集脚本
+            print("  [Windows] 运行数据采集脚本...")
+            
+            # 1. 更新铂金
+            p1 = subprocess.run([python_cmd, 'generate_all_pairs.py'], capture_output=True, text=True)
+            if p1.returncode != 0:
+                print(f"铂金更新失败: {p1.stderr}")
+                raise Exception(f"铂金更新失败: {p1.stderr}")
+            
+            # 2. 更新钯金
+            p2 = subprocess.run([python_cmd, 'generate_palladium_pairs.py'], capture_output=True, text=True)
+            if p2.returncode != 0:
+                print(f"钯金更新失败: {p2.stderr}")
+                raise Exception(f"钯金更新失败: {p2.stderr}")
+                
+            message = '数据已更新（本地采集）'
+        else:
+            # Linux/VPS：从GitHub拉取最新数据
+            print("  [Linux/VPS] 从GitHub拉取最新数据...")
+            
+            p = subprocess.run(['git', 'pull', 'origin', 'master'], capture_output=True, text=True)
+            if p.returncode != 0:
+                print(f"git pull 失败: {p.stderr}")
+                raise Exception(f"git pull 失败: {p.stderr}")
+            
+            # print(f"  git pull 输出: {p.stdout}")
+            message = '数据已同步（从GitHub拉取）'
+            
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] 同步成功: {message}")
+        return True, message
+    except Exception as e:
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] 同步失败: {e}")
+        return False, str(e)
+
+def auto_refresh_scheduler(interval=600):
+    """后台定时刷新任务"""
+    print(f"启动自动刷新调度器，间隔 {interval} 秒")
+    while True:
+        try:
+            time.sleep(interval)
+            print(f"\n[{datetime.now().strftime('%H:%M:%S')}] 触发定时自动更新...")
+            run_data_sync()
+        except Exception as e:
+            print(f"定时更新出错: {e}")
+
 
 
 class PriceAPIHandler(SimpleHTTPRequestHandler):
@@ -43,50 +106,20 @@ class PriceAPIHandler(SimpleHTTPRequestHandler):
     def trigger_data_refresh(self):
         """触发后台数据更新"""
         try:
-            import subprocess
-            import platform
+            success, message = run_data_sync()
             
-            is_windows = platform.system() == 'Windows'
-            python_cmd = 'python' if is_windows else 'python3'
-            
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] 收到刷新请求...")
-            
-            if is_windows:
-                # Windows本地：运行数据采集脚本
-                print("  [Windows] 运行数据采集脚本...")
-                
-                # 1. 更新铂金
-                p1 = subprocess.run([python_cmd, 'generate_all_pairs.py'], capture_output=True, text=True)
-                if p1.returncode != 0:
-                    print(f"铂金更新失败: {p1.stderr}")
-                    raise Exception(f"铂金更新失败: {p1.stderr}")
-                
-                # 2. 更新钯金
-                p2 = subprocess.run([python_cmd, 'generate_palladium_pairs.py'], capture_output=True, text=True)
-                if p2.returncode != 0:
-                    print(f"钯金更新失败: {p2.stderr}")
-                    raise Exception(f"钯金更新失败: {p2.stderr}")
-                    
-                message = '数据已更新（本地采集）'
+            if success:
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({'success': True, 'message': message}).encode('utf-8'))
             else:
-                # Linux/VPS：从GitHub拉取最新数据
-                print("  [Linux/VPS] 从GitHub拉取最新数据...")
-                
-                p = subprocess.run(['git', 'pull', 'origin', 'master'], capture_output=True, text=True)
-                if p.returncode != 0:
-                    print(f"git pull 失败: {p.stderr}")
-                    raise Exception(f"git pull 失败: {p.stderr}")
-                
-                print(f"  git pull 输出: {p.stdout}")
-                message = '数据已同步（从GitHub拉取）'
-                
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] {message}")
-            
-            self.send_response(200)
-            self.send_header('Content-Type', 'application/json')
-            self.send_header('Access-Control-Allow-Origin', '*')
-            self.end_headers()
-            self.wfile.write(json.dumps({'success': True, 'message': message}).encode('utf-8'))
+                self.send_response(500)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({'success': False, 'error': message}).encode('utf-8'))
             
         except Exception as e:
             print(f"更新过程出错: {e}")
@@ -341,5 +374,11 @@ if __name__ == '__main__':
     print("  GET  /api/saved-prices - 获取保存的手动价格")
     print("  POST /api/save-prices  - 保存手动输入的价格")
     print("=" * 50)
+    print("=" * 50)
+    
+    # 启动自动刷新线程 (每10分钟=600秒)
+    refresh_thread = threading.Thread(target=auto_refresh_scheduler, args=(600,), daemon=True)
+    refresh_thread.start()
+    
     server = HTTPServer(('', 8080), PriceAPIHandler)
     server.serve_forever()
