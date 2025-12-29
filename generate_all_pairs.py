@@ -17,7 +17,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 from tvDatafeed import TvDatafeed, Interval
-from database import init_database, save_pair_history
+from database import init_database, save_pair_history, get_pair_history
 
 OZ_TO_GRAM = 31.1035
 RATE = 7.04
@@ -165,7 +165,19 @@ def main():
                 # 保存到数据库
                 save_pair_history('platinum', pair_name, gfex_sym, cme_sym, history)
                 
-                print(f"  [OK] {pair_name}: {len(history)} 条数据, 当前价差: {latest['spread_pct']:+.2f}%")
+                # 从数据库读取完整历史（包括导入的小时级数据）
+                db_history = get_pair_history('platinum', pair_name)
+                if db_history:
+                    pair_data['history'] = db_history
+                    # 重新计算统计数据
+                    all_spreads = [h['spread_pct'] for h in db_history]
+                    pair_data['stats'] = {
+                        'avg_spread_pct': float(np.mean(all_spreads)),
+                        'max_spread_pct': float(np.max(all_spreads)),
+                        'min_spread_pct': float(np.min(all_spreads))
+                    }
+                
+                print(f"  [OK] {pair_name}: {len(pair_data['history'])} 条数据, 当前价差: {latest['spread_pct']:+.2f}%")
     
     # 保存所有配对数据到JSON
     output = {
