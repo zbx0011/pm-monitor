@@ -49,17 +49,33 @@ def fetch_gfex_data(symbol):
         return None
 
 
+import sqlite3
+DB_FILE = 'precious_metals.db'
+
 def fetch_cme_data(tv, symbol):
-    """获取CME分钟数据"""
+    """从数据库获取CME分钟数据"""
     try:
-        # 获取更多历史数据以匹配国内数据长度 (约2-3天 -> 10天)
-        df = tv.get_hist(symbol=symbol, exchange='NYMEX', 
-                        interval=Interval.in_1_minute, n_bars=2500)
-        if df is not None:
-            df = df.sort_index()
+        conn = sqlite3.connect(DB_FILE)
+        # 读取最近 5000 条数据
+        query = f'''
+            SELECT datetime, open, high, low, close, volume 
+            FROM cme_platinum_contracts 
+            WHERE contract = '{symbol}'
+            ORDER BY datetime DESC
+            LIMIT 5000
+        '''
+        df = pd.read_sql_query(query, conn)
+        conn.close()
+        
+        if df is None or len(df) == 0:
+            print(f"  ✗ 数据库中无 {symbol} 数据")
+            return None
+            
+        df['datetime'] = pd.to_datetime(df['datetime'])
+        df = df.set_index('datetime').sort_index()
         return df
     except Exception as e:
-        print(f"  ✗ CME {symbol}获取失败: {e}")
+        print(f"  ✗ 数据库读取 {symbol} 失败: {e}")
         return None
 
 
@@ -100,7 +116,8 @@ def main():
     print("生成所有铂金合约配对价差数据")
     print("=" * 80)
     
-    tv = TvDatafeed()
+    # tv = TvDatafeed()  # 不再需要 tvDatafeed，直接从数据库读取
+    tv = None
     
     # 获取所有广期所数据
     gfex_data = {}

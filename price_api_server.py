@@ -370,24 +370,51 @@ def get_gfex_prices():
 
 
 def get_cme_prices():
-    """获取CME铂金钯金期货价格 (新浪外盘)"""
+    """获取CME铂金钯金价格 (优先从本地数据库获取爬虫数据)"""
     result = {'pt': None, 'pd': None, 'pt_time': None, 'pd_time': None}
     
+    # 1. 获取铂金 (从数据库读取最新的爬虫数据)
     try:
-        pt = ak.futures_foreign_hist(symbol='XPT')
-        if len(pt) > 0:
-            result['pt'] = float(pt['close'].iloc[-1])
-            last_date = pd.to_datetime(pt['date'].iloc[-1])
-            result['pt_time'] = last_date.strftime('%Y.%m.%d') + ' 06:00'
+        conn = sqlite3.connect('precious_metals.db')
+        cursor = conn.cursor()
+        
+        # 获取最新的 PLJ2026 或其他活跃合约
+        # 这里取最近更新的一条数据的合约
+        cursor.execute('''
+            SELECT close, datetime, contract 
+            FROM cme_platinum_contracts 
+            ORDER BY datetime DESC, created_at DESC 
+            LIMIT 1
+        ''')
+        row = cursor.fetchone()
+        
+        if row:
+            result['pt'] = float(row[0])
+            result['pt_time'] = row[1]
+            print(f"  [DB] 铂金({row[2]}): ${result['pt']} ({result['pt_time']})")
+        
+        conn.close()
     except Exception as e:
-        print(f"CME铂金获取失败: {e}")
+        print(f"  [DB] 数据库读取铂金失败: {e}")
+
+    # 如果数据库没有数据，回退到 akshare (虽然可能不准)
+    if result['pt'] is None:
+        try:
+            pt = ak.futures_foreign_hist(symbol='XPT')
+            if len(pt) > 0:
+                result['pt'] = float(pt['close'].iloc[-1])
+                last_date = pd.to_datetime(pt['date'].iloc[-1])
+                result['pt_time'] = last_date.strftime('%Y-%m-%d %H:%M')
+        except Exception as e:
+            print(f"CME铂金(Akshare)获取失败: {e}")
     
+    # 2. 获取钯金 (暂时仍用 Akshare，除非有数据库表)
     try:
         pd_data = ak.futures_foreign_hist(symbol='XPD')
         if len(pd_data) > 0:
             result['pd'] = float(pd_data['close'].iloc[-1])
             last_date = pd.to_datetime(pd_data['date'].iloc[-1])
-            result['pd_time'] = last_date.strftime('%Y.%m.%d') + ' 06:00'
+            result['pd_time'] = last_date.strftime('%Y-%m-%d %H:%M')
     except Exception as e:
         print(f"CME钯金获取失败: {e}")
     
@@ -442,8 +469,8 @@ if __name__ == '__main__':
     print("=" * 50)
     print("=" * 50)
     
-    # 启动自动刷新线程 (每2分钟=120秒)
-    refresh_thread = threading.Thread(target=auto_refresh_scheduler, args=(120,), daemon=True)
+    # 启动自动刷新线程 (每1分钟=60秒)
+    refresh_thread = threading.Thread(target=auto_refresh_scheduler, args=(60,), daemon=True)
     refresh_thread.start()
     
     server = HTTPServer(('', 8080), PriceAPIHandler)

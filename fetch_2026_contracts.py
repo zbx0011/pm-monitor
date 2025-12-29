@@ -103,15 +103,16 @@ def fetch_and_save_gfex(contracts):
     conn.close()
 
 def fetch_and_save_cme(tv, contracts):
-    """获取并保存CME铂金合约数据 (使用 tvDatafeed 历史数据)"""
+    """获取并保存CME铂金合约分钟数据 (使用 tvDatafeed 历史数据)"""
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     
     for symbol, desc in contracts:
-        print(f"\n正在获取CME {symbol} ({desc})...")
+        print(f"\n正在获取CME {symbol} ({desc}) 分钟数据...")
         try:
+            # 获取分钟级数据，最多 5000 条
             df = tv.get_hist(symbol=symbol, exchange='NYMEX', 
-                            interval=Interval.in_1_hour, n_bars=500)
+                            interval=Interval.in_1_minute, n_bars=5000)
             if df is None or len(df) == 0:
                 print(f"  ✗ {symbol} 无数据")
                 continue
@@ -135,7 +136,7 @@ def fetch_and_save_cme(tv, contracts):
                 count += 1
             
             conn.commit()
-            print(f"  ✓ {symbol}: 保存 {count} 条小时数据")
+            print(f"  ✓ {symbol}: 保存 {count} 条分钟数据")
         except Exception as e:
             print(f"  ✗ {symbol} 获取失败: {e}")
     
