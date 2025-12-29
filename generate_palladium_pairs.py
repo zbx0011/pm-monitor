@@ -4,8 +4,12 @@
 CME: PAH2026(3月), PAM2026(6月), PAU2026(9月), PAZ2026(12月)
 """
 import os
-os.environ['HTTP_PROXY'] = 'http://127.0.0.1:7890'
-os.environ['HTTPS_PROXY'] = 'http://127.0.0.1:7890'
+import platform
+
+# 仅在Windows本地开发环境使用代理，VPS(Linux)通常不需要或使用系统配置
+if platform.system() == 'Windows':
+    os.environ['HTTP_PROXY'] = 'http://127.0.0.1:7890'
+    os.environ['HTTPS_PROXY'] = 'http://127.0.0.1:7890'
 
 import json
 import akshare as ak

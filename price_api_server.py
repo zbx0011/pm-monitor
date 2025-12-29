@@ -44,17 +44,22 @@ class PriceAPIHandler(SimpleHTTPRequestHandler):
         """触发后台数据更新脚本"""
         try:
             import subprocess
-            print(f"[{datetime.now().strftime('%H:%M:%S')}]以此收到刷新请求，开始运行数据采集脚本...")
+            import platform
             
-            # 使用subprocess运行脚本，并等待完成
+            # Windows用 'python', Linux/Mac用 'python3'
+            python_cmd = 'python' if platform.system() == 'Windows' else 'python3'
+            
+            print(f"[{datetime.now().strftime('%H:%M:%S')}]以此收到刷新请求，开始运行数据采集脚本({python_cmd})...")
+            
+            # 使用sumprocess运行脚本，并等待完成
             # 1. 更新铂金
-            p1 = subprocess.run(['python', 'generate_all_pairs.py'], capture_output=True, text=True)
+            p1 = subprocess.run([python_cmd, 'generate_all_pairs.py'], capture_output=True, text=True)
             if p1.returncode != 0:
                 print(f"铂金更新失败: {p1.stderr}")
                 raise Exception(f"铂金更新失败: {p1.stderr}")
             
             # 2. 更新钯金
-            p2 = subprocess.run(['python', 'generate_palladium_pairs.py'], capture_output=True, text=True)
+            p2 = subprocess.run([python_cmd, 'generate_palladium_pairs.py'], capture_output=True, text=True)
             if p2.returncode != 0:
                 print(f"钯金更新失败: {p2.stderr}")
                 raise Exception(f"钯金更新失败: {p2.stderr}")

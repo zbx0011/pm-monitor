@@ -4,8 +4,12 @@
 CME: PLF2026(1月), PLJ2026(4月), PLN2026(7月), PLV2026(10月)
 """
 import os
-os.environ['HTTP_PROXY'] = 'http://127.0.0.1:7890'
-os.environ['HTTPS_PROXY'] = 'http://127.0.0.1:7890'
+import platform
+
+# 仅在Windows本地开发环境使用代理，VPS(Linux)通常不需要或使用系统配置
+if platform.system() == 'Windows':
+    os.environ['HTTP_PROXY'] = 'http://127.0.0.1:7890'
+    os.environ['HTTPS_PROXY'] = 'http://127.0.0.1:7890'
 
 import json
 import akshare as ak
