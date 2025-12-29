@@ -46,6 +46,12 @@ def run_data_sync():
             if p2.returncode != 0:
                 print(f"钯金更新失败: {p2.stderr}")
                 raise Exception(f"钯金更新失败: {p2.stderr}")
+            
+            # 3. 独立存储CME数据（不依赖广期所交易时间）
+            p3 = subprocess.run([python_cmd, 'fetch_2026_contracts.py'], capture_output=True, text=True)
+            if p3.returncode != 0:
+                print(f"CME独立存储失败: {p3.stderr}")
+                # 不抛异常，CME存储失败不阻断整体流程
                 
             message = '数据已更新（本地采集）'
         else:
