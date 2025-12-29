@@ -41,36 +41,52 @@ class PriceAPIHandler(SimpleHTTPRequestHandler):
             self.end_headers()
 
     def trigger_data_refresh(self):
-        """触发后台数据更新脚本"""
+        """触发后台数据更新"""
         try:
             import subprocess
             import platform
             
-            # Windows用 'python', Linux/Mac用 'python3'
-            python_cmd = 'python' if platform.system() == 'Windows' else 'python3'
+            is_windows = platform.system() == 'Windows'
+            python_cmd = 'python' if is_windows else 'python3'
             
-            print(f"[{datetime.now().strftime('%H:%M:%S')}]以此收到刷新请求，开始运行数据采集脚本({python_cmd})...")
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] 收到刷新请求...")
             
-            # 使用sumprocess运行脚本，并等待完成
-            # 1. 更新铂金
-            p1 = subprocess.run([python_cmd, 'generate_all_pairs.py'], capture_output=True, text=True)
-            if p1.returncode != 0:
-                print(f"铂金更新失败: {p1.stderr}")
-                raise Exception(f"铂金更新失败: {p1.stderr}")
-            
-            # 2. 更新钯金
-            p2 = subprocess.run([python_cmd, 'generate_palladium_pairs.py'], capture_output=True, text=True)
-            if p2.returncode != 0:
-                print(f"钯金更新失败: {p2.stderr}")
-                raise Exception(f"钯金更新失败: {p2.stderr}")
+            if is_windows:
+                # Windows本地：运行数据采集脚本
+                print("  [Windows] 运行数据采集脚本...")
                 
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] 数据采集完成")
+                # 1. 更新铂金
+                p1 = subprocess.run([python_cmd, 'generate_all_pairs.py'], capture_output=True, text=True)
+                if p1.returncode != 0:
+                    print(f"铂金更新失败: {p1.stderr}")
+                    raise Exception(f"铂金更新失败: {p1.stderr}")
+                
+                # 2. 更新钯金
+                p2 = subprocess.run([python_cmd, 'generate_palladium_pairs.py'], capture_output=True, text=True)
+                if p2.returncode != 0:
+                    print(f"钯金更新失败: {p2.stderr}")
+                    raise Exception(f"钯金更新失败: {p2.stderr}")
+                    
+                message = '数据已更新（本地采集）'
+            else:
+                # Linux/VPS：从GitHub拉取最新数据
+                print("  [Linux/VPS] 从GitHub拉取最新数据...")
+                
+                p = subprocess.run(['git', 'pull', 'origin', 'master'], capture_output=True, text=True)
+                if p.returncode != 0:
+                    print(f"git pull 失败: {p.stderr}")
+                    raise Exception(f"git pull 失败: {p.stderr}")
+                
+                print(f"  git pull 输出: {p.stdout}")
+                message = '数据已同步（从GitHub拉取）'
+                
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] {message}")
             
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
-            self.wfile.write(json.dumps({'success': True, 'message': '数据已更新'}).encode('utf-8'))
+            self.wfile.write(json.dumps({'success': True, 'message': message}).encode('utf-8'))
             
         except Exception as e:
             print(f"更新过程出错: {e}")
