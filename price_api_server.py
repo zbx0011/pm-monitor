@@ -469,8 +469,12 @@ if __name__ == '__main__':
     print("=" * 50)
     print("=" * 50)
     
-    # 启动自动刷新线程 (每1分钟=60秒)
-    refresh_thread = threading.Thread(target=auto_refresh_scheduler, args=(60,), daemon=True)
+    # 1. 启动时立即执行一次数据更新 (满足用户要求: 开启项目自动获取数据)
+    print("启动时立即执行首次数据更新...")
+    run_data_sync()
+
+    # 2. 启动自动刷新线程 (每2分钟=120秒)
+    refresh_thread = threading.Thread(target=auto_refresh_scheduler, args=(120,), daemon=True)
     refresh_thread.start()
     
     server = HTTPServer(('', 8080), PriceAPIHandler)

@@ -44,14 +44,17 @@ class TradingViewScraper:
         
         # 使用单独的 Chrome 配置目录（避免与主浏览器冲突）
         if self.use_profile:
-            # 使用项目目录下的独立 Chrome 配置
-            profile_dir = os.path.join(os.path.dirname(__file__), 'chrome_profile')
-            if not os.path.exists(profile_dir):
-                os.makedirs(profile_dir)
-                print(f"    创建 Chrome 配置目录: {profile_dir}")
+            # 即使使用用户配置，也尝试使用新版 headless 模式
+            # 注意：如果用户同时打开了该 Chrome 配置，可能会导致冲突或失败
+            chrome_options.add_argument("--headless=new")
+            
+            user_data_dir = os.path.join(os.getcwd(), "chrome_profile")
+            if not os.path.exists(user_data_dir):
+                os.makedirs(user_data_dir)
+                print(f"    创建 Chrome 配置目录: {user_data_dir}")
                 print("    ⚠ 首次运行需要手动登录 TradingView！")
-            chrome_options.add_argument(f'--user-data-dir={profile_dir}')
-            print("    使用独立 Chrome 配置")
+            chrome_options.add_argument(f"--user-data-dir={user_data_dir}")
+            print(f"    使用独立 Chrome 配置: {user_data_dir}")
         else:
             chrome_options.add_argument("--headless=new")
             
