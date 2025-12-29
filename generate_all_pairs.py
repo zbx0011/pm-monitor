@@ -1,22 +1,20 @@
 """
 生成所有铂金合约配对的价差数据
 广期所: PT2606, PT2610
-CME: PLF2026(1月), PLN2026(7月), PLV2026(10月)
-共6个配对
+CME: PLF2026(1月), PLJ2026(4月), PLN2026(7月), PLV2026(10月)
 """
 import os
 os.environ['HTTP_PROXY'] = 'http://127.0.0.1:7890'
 os.environ['HTTPS_PROXY'] = 'http://127.0.0.1:7890'
 
 import json
-import sqlite3
 import akshare as ak
 import pandas as pd
 import numpy as np
 from datetime import datetime
 from tvDatafeed import TvDatafeed, Interval
+from database import init_database, save_pair_history
 
-DB_FILE = 'precious_metals.db'
 OZ_TO_GRAM = 31.1035
 RATE = 7.04
 
@@ -28,15 +26,16 @@ GFEX_CONTRACTS = {
 
 CME_CONTRACTS = {
     'PLF2026': {'name': '2601', 'month': '2026年1月'},
+    'PLJ2026': {'name': '2604', 'month': '2026年4月'},
     'PLN2026': {'name': '2607', 'month': '2026年7月'},
     'PLV2026': {'name': '2610', 'month': '2026年10月'}
 }
 
 
 def fetch_gfex_data(symbol):
-    """获取广期所小时数据"""
+    """获取广期所分钟数据"""
     try:
-        df = ak.futures_zh_minute_sina(symbol=symbol, period='60')
+        df = ak.futures_zh_minute_sina(symbol=symbol, period='1')
         df['datetime'] = pd.to_datetime(df['datetime'])
         df = df.set_index('datetime').sort_index()
         return df
@@ -46,10 +45,10 @@ def fetch_gfex_data(symbol):
 
 
 def fetch_cme_data(tv, symbol):
-    """获取CME小时数据"""
+    """获取CME分钟数据"""
     try:
         df = tv.get_hist(symbol=symbol, exchange='NYMEX', 
-                        interval=Interval.in_1_hour, n_bars=500)
+                        interval=Interval.in_1_minute, n_bars=500)
         if df is not None:
             df = df.sort_index()
         return df
@@ -104,7 +103,7 @@ def main():
         df = fetch_gfex_data(symbol)
         if df is not None:
             gfex_data[symbol] = df
-            print(f"  ✓ {symbol}: {len(df)} 条数据")
+            print(f"  [OK] {symbol}: {len(df)} 条数据")
     
     # 获取所有CME数据
     cme_data = {}
@@ -113,7 +112,7 @@ def main():
         df = fetch_cme_data(tv, symbol)
         if df is not None:
             cme_data[symbol] = df
-            print(f"  ✓ {symbol}: {len(df)} 条数据")
+            print(f"  [OK] {symbol}: {len(df)} 条数据")
     
     # 生成所有配对的价差
     all_pairs = {}
@@ -157,9 +156,13 @@ def main():
                 }
                 
                 all_pairs[pair_name] = pair_data
-                print(f"  ✓ {pair_name}: {len(history)} 条数据, 当前价差: {latest['spread_pct']:+.2f}%")
+                
+                # 保存到数据库
+                save_pair_history('platinum', pair_name, gfex_sym, cme_sym, history)
+                
+                print(f"  [OK] {pair_name}: {len(history)} 条数据, 当前价差: {latest['spread_pct']:+.2f}%")
     
-    # 保存所有配对数据
+    # 保存所有配对数据到JSON
     output = {
         'update_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         'pairs': all_pairs
@@ -177,7 +180,7 @@ def main():
         c = data['current']
         print(f"{name:<12} | {c['gfex_price']:>10.2f} | {c['cme_usd']:>10.2f} | {c['spread_pct']:>+10.2f}%")
     
-    print(f"\n✓ 数据已保存到 platinum_all_pairs.json")
+    print(f"\n[OK] 数据已保存到 platinum_all_pairs.json 和数据库")
     print("=" * 80)
 
 

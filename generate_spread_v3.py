@@ -51,31 +51,31 @@ def generate_spread_data(metal='platinum'):
     tv = TvDatafeed()
     now = datetime.now()
     
-    # 1. 获取广期所具体合约小时数据
-    print(f"\n正在获取广期所 {config['gfex_symbol']} 小时数据...")
+    # 1. 获取广期所分钟数据
+    print(f"\n正在获取广期所 {config['gfex_symbol']} 分钟数据...")
     try:
-        gfex_df = ak.futures_zh_minute_sina(symbol=config['gfex_symbol'], period='60')
+        gfex_df = ak.futures_zh_minute_sina(symbol=config['gfex_symbol'], period='1')
         gfex_df['datetime'] = pd.to_datetime(gfex_df['datetime'])
         gfex_df = gfex_df.set_index('datetime').sort_index()
         gfex_df = gfex_df.rename(columns={'close': 'gfex_close'})
-        print(f"  ✓ 获取到 {len(gfex_df)} 条小时数据")
+        print(f"  ✓ 获取到 {len(gfex_df)} 条分钟数据")
         print(f"  范围: {gfex_df.index.min().strftime('%Y-%m-%d %H:%M')} ~ {gfex_df.index.max().strftime('%Y-%m-%d %H:%M')}")
     except Exception as e:
         print(f"  ✗ 广期所数据获取失败: {e}")
         return None
     
-    # 2. 获取CME小时数据 (TvDatafeed返回的时间戳是北京时间)
-    print(f"\n正在获取CME {config['cme_symbol']} 小时数据...")
+    # 2. 获取CME分钟数据 (TvDatafeed返回的时间戳是北京时间)
+    print(f"\n正在获取CME {config['cme_symbol']} 分钟数据...")
     try:
         cme_df = tv.get_hist(symbol=config['cme_symbol'], exchange=config['cme_exchange'], 
-                            interval=Interval.in_1_hour, n_bars=500)
+                            interval=Interval.in_1_minute, n_bars=500)
         if cme_df is None or len(cme_df) == 0:
             print(f"  ✗ CME数据为空")
             return None
         cme_df = cme_df.sort_index()
         cme_df['cme_cny'] = (cme_df['close'] * RATE) / OZ_TO_GRAM
         cme_df = cme_df.rename(columns={'close': 'cme_usd'})
-        print(f"  ✓ 获取到 {len(cme_df)} 条小时数据")
+        print(f"  ✓ 获取到 {len(cme_df)} 条分钟数据")
         print(f"  范围: {cme_df.index.min().strftime('%Y-%m-%d %H:%M')} ~ {cme_df.index.max().strftime('%Y-%m-%d %H:%M')}")
     except Exception as e:
         print(f"  ✗ CME数据获取失败: {e}")

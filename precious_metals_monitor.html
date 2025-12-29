@@ -1519,31 +1519,30 @@
         }
 
         // 刷新数据
+        // 刷新数据
         async function refreshData() {
             const btn = document.querySelector('.refresh-btn');
-            btn.textContent = '⏳ 刷新中...';
-            btn.disabled = true;
+            if (btn) {
+                btn.textContent = '⏳ 正在采集最新数据...';
+                btn.disabled = true;
+            }
 
             try {
-                // 并行获取数据
-                const [gfexData, rate] = await Promise.all([
-                    fetchGFEXPrice(),
-                    fetchExchangeRate()
-                ]);
+                // 1. 调用API触发后台数据更新
+                const updateRes = await fetch('/api/refresh-data', { method: 'POST' });
+                if (!updateRes.ok) throw new Error('数据更新请求失败');
 
-                // 更新数据
-                if (gfexData.PT2606) marketData.gfex.PT2606 = gfexData.PT2606;
-                if (gfexData.PD2606) marketData.gfex.PD2606 = gfexData.PD2606;
-                marketData.exchangeRate = rate;
-                marketData.lastUpdate = new Date();
+                // 2. 也是重载页面
+                if (btn) btn.textContent = '✅ 数据已更新';
+                setTimeout(() => window.location.reload(true), 500);
 
-                updateDisplay();
             } catch (error) {
-                console.error('刷新数据失败:', error);
-                alert('数据刷新失败，请稍后重试');
-            } finally {
-                btn.textContent = '🔄 刷新数据';
-                btn.disabled = false;
+                console.error('刷新失败:', error);
+                alert('数据刷新失败: ' + error.message);
+                if (btn) {
+                    btn.textContent = '🔄 刷新数据';
+                    btn.disabled = false;
+                }
             }
         }
 
@@ -2275,40 +2274,11 @@
             if (btn) btn.textContent = '⏳ 刷新中...';
 
             try {
-                const resp = await fetch('/api/prices');
-                if (!resp.ok) throw new Error('API请求失败');
+                // 重新加载价差排行榜
+                await loadSpreadRanking();
 
-                const data = await resp.json();
-                console.log('API返回:', data);
-
-                // 更新时间
-                document.getElementById('data-time').textContent = data.update_time;
-
-                // 更新汇率
-                document.getElementById('exchange-rate').textContent = `USD/CNY = ${data.exchange_rate.toFixed(4)}`;
-
-                // 更新输入框
-                if (data.cme.pt) document.getElementById('cme-pl-price').value = data.cme.pt;
-                if (data.cme.pd) document.getElementById('cme-pa-price').value = data.cme.pd;
-                if (data.bybit.pt) document.getElementById('spot-pl-price').value = data.bybit.pt;
-                if (data.bybit.pd) document.getElementById('spot-pa-price').value = data.bybit.pd;
-                if (data.gfex.pt) document.getElementById('gfex-pl-price').value = data.gfex.pt;
-                if (data.gfex.pd) document.getElementById('gfex-pa-price').value = data.gfex.pd;
-
-                // 更新卡片价格显示
-                if (data.gfex.pt) document.getElementById('pt-gfex').textContent = data.gfex.pt.toFixed(2);
-                if (data.gfex.pd) document.getElementById('pd-gfex').textContent = data.gfex.pd.toFixed(2);
-                if (data.cme.pt) document.getElementById('pt-intl-usd').textContent = data.cme.pt.toFixed(2);
-                if (data.cme.pd) document.getElementById('pd-intl-usd').textContent = data.cme.pd.toFixed(2);
-
-                // 更新时间显示
-                if (data.gfex.pt_time) document.getElementById('pt-gfex-time').textContent = '@ ' + data.gfex.pt_time;
-                if (data.gfex.pd_time) document.getElementById('pd-gfex-time').textContent = '@ ' + data.gfex.pd_time;
-                if (data.cme.pt_time) document.getElementById('pt-cme-time').textContent = '@ ' + data.cme.pt_time;
-                if (data.cme.pd_time) document.getElementById('pd-cme-time').textContent = '@ ' + data.cme.pd_time;
-
-                // 重新计算套利
-                calculateArbitrage();
+                // 重新加载初始化数据
+                await init();
 
                 if (btn) btn.textContent = '✅ 已刷新';
                 setTimeout(() => { if (btn) btn.textContent = '🔄 刷新数据'; }, 2000);
@@ -2317,7 +2287,6 @@
                 console.error('刷新失败:', error);
                 if (btn) btn.textContent = '❌ 刷新失败';
                 setTimeout(() => { if (btn) btn.textContent = '🔄 刷新数据'; }, 2000);
-                alert('刷新失败: ' + error.message + '\n\n请确保 price_api_server.py 正在运行');
             }
         }
 
@@ -2532,12 +2501,17 @@
 
                 // 收集铂金配对
                 const ptPairs = [];
+                const todayPt = new Date().toISOString().slice(0, 10);
                 for (const [pairName, pair] of Object.entries(ptData.pairs)) {
                     if (pair.current) {
                         // 获取价格时间：history最后一条的date
                         const priceTime = pair.history && pair.history.length > 0
                             ? pair.history[pair.history.length - 1].date
                             : ptData.update_time;
+                        // 只保留今天的数据
+                        const priceDate = priceTime.slice(0, 10);
+                        if (priceDate !== todayPt) continue;
+
                         ptPairs.push({
                             pairName, priceTime,
                             gfexContract: pair.gfex_contract,
@@ -2554,11 +2528,16 @@
 
                 // 收集钯金配对
                 const pdPairs = [];
+                const today = new Date().toISOString().slice(0, 10); // 今天日期 YYYY-MM-DD
                 for (const [pairName, pair] of Object.entries(pdData.pairs)) {
                     if (pair.current) {
                         const priceTime = pair.history && pair.history.length > 0
                             ? pair.history[pair.history.length - 1].date
                             : pdData.update_time;
+                        // 只保留今天的数据
+                        const priceDate = priceTime.slice(0, 10);
+                        if (priceDate !== today) continue;
+
                         pdPairs.push({
                             pairName, priceTime,
                             gfexContract: pair.gfex_contract,
@@ -3476,6 +3455,35 @@
                 console.log('价格数据已自动更新:', data.update_time);
             } catch (error) {
                 console.log('自动加载价格数据:', error.message);
+            }
+        }
+
+        // 刷新数据按钮
+        // 刷新数据按钮
+        // 刷新数据按钮
+        async function refreshData() {
+            const btn = document.querySelector('.refresh-btn');
+            if (btn) {
+                btn.textContent = '⏳ 正在采集最新数据...';
+                btn.disabled = true;
+            }
+
+            try {
+                // 1. 调用API触发后台数据更新
+                const updateRes = await fetch('/api/refresh-data', { method: 'POST' });
+                if (!updateRes.ok) throw new Error('数据更新请求失败');
+
+                // 2. 更新完后重载页面以显示新数据
+                if (btn) btn.textContent = '✅ 数据已更新';
+                setTimeout(() => window.location.reload(true), 500);
+
+            } catch (error) {
+                console.error('刷新失败:', error);
+                alert('数据刷新失败: ' + error.message);
+                if (btn) {
+                    btn.textContent = '🔄 刷新数据';
+                    btn.disabled = false;
+                }
             }
         }
 

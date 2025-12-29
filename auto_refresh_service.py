@@ -67,12 +67,12 @@ def fetch_cme_minute(tv, symbol, exchange, interval=Interval.in_1_minute, n_bars
 
 
 def generate_spread_data(tv, metal='platinum'):
-    """生成指定品种的价差数据 - 使用小时级数据，确保两边同一时间匹配"""
+    """生成指定品种的价差数据 - 使用分钟级数据"""
     config = CONTRACTS[metal]
     
-    # 1. 获取广期所具体合约小时数据 (使用PT2610/PD2606)
+    # 1. 获取广期所分钟数据 (使用PT2610/PD2606)
     try:
-        gfex_df = ak.futures_zh_minute_sina(symbol=config['gfex_symbol'], period='60')
+        gfex_df = ak.futures_zh_minute_sina(symbol=config['gfex_symbol'], period='1')
         gfex_df['datetime'] = pd.to_datetime(gfex_df['datetime'])
         gfex_df = gfex_df.set_index('datetime').sort_index()
         gfex_df = gfex_df.rename(columns={'close': 'gfex_close'})
@@ -80,10 +80,10 @@ def generate_spread_data(tv, metal='platinum'):
         print(f"  ✗ 广期所{config['gfex_symbol']}获取失败: {e}")
         return None
     
-    # 2. 获取CME小时数据 (TvDatafeed返回北京时间)
+    # 2. 获取CME分钟数据 (TvDatafeed返回北京时间)
     try:
         cme_df = tv.get_hist(symbol=config['cme_symbol'], exchange=config['cme_exchange'], 
-                            interval=Interval.in_1_hour, n_bars=500)
+                            interval=Interval.in_1_minute, n_bars=500)
         if cme_df is None or len(cme_df) == 0:
             print(f"  ✗ CME {config['cme_symbol']}数据为空")
             return None

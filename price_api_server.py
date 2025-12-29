@@ -2,6 +2,7 @@
 实时价格API服务
 提供广期所/CME贵金属价格的HTTP接口
 支持手动数据持久化存储
+支持从数据库读取配对数据
 """
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 import json
@@ -9,6 +10,7 @@ import akshare as ak
 from datetime import datetime
 import pandas as pd
 import os
+from database import get_all_pairs, get_pair_history
 
 # 手动数据存储文件
 MANUAL_DATA_FILE = 'manual_prices.json'
@@ -20,15 +22,58 @@ class PriceAPIHandler(SimpleHTTPRequestHandler):
             self.send_price_data()
         elif self.path == '/api/saved-prices':
             self.send_saved_prices()
+        elif self.path == '/api/platinum-pairs':
+            self.send_pairs_data('platinum')
+        elif self.path == '/api/palladium-pairs':
+            self.send_pairs_data('palladium')
+        elif self.path.startswith('/api/pair-history'):
+            self.send_pair_history()
         else:
             super().do_GET()
     
     def do_POST(self):
         if self.path == '/api/save-prices':
             self.save_manual_prices()
+        elif self.path == '/api/refresh-data':
+            self.trigger_data_refresh()
         else:
             self.send_response(404)
             self.end_headers()
+
+    def trigger_data_refresh(self):
+        """触发后台数据更新脚本"""
+        try:
+            import subprocess
+            print(f"[{datetime.now().strftime('%H:%M:%S')}]以此收到刷新请求，开始运行数据采集脚本...")
+            
+            # 使用subprocess运行脚本，并等待完成
+            # 1. 更新铂金
+            p1 = subprocess.run(['python', 'generate_all_pairs.py'], capture_output=True, text=True)
+            if p1.returncode != 0:
+                print(f"铂金更新失败: {p1.stderr}")
+                raise Exception(f"铂金更新失败: {p1.stderr}")
+            
+            # 2. 更新钯金
+            p2 = subprocess.run(['python', 'generate_palladium_pairs.py'], capture_output=True, text=True)
+            if p2.returncode != 0:
+                print(f"钯金更新失败: {p2.stderr}")
+                raise Exception(f"钯金更新失败: {p2.stderr}")
+                
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] 数据采集完成")
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': True, 'message': '数据已更新'}).encode('utf-8'))
+            
+        except Exception as e:
+            print(f"更新过程出错: {e}")
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': False, 'error': str(e)}).encode('utf-8'))
     
     def do_OPTIONS(self):
         """处理 CORS 预检请求"""
@@ -95,6 +140,52 @@ class PriceAPIHandler(SimpleHTTPRequestHandler):
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps({'error': str(e)}).encode('utf-8'))
+    
+    def send_pairs_data(self, metal):
+        """返回配对数据（从数据库读取）"""
+        try:
+            pairs = get_all_pairs(metal)
+            data = {
+                'update_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'pairs': pairs
+            }
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps(data, ensure_ascii=False).encode('utf-8'))
+        except Exception as e:
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'error': str(e)}).encode('utf-8'))
+    
+    def send_pair_history(self):
+        """返回指定配对的历史数据"""
+        try:
+            # 解析参数: /api/pair-history?metal=platinum&pair=2610-2601
+            from urllib.parse import urlparse, parse_qs
+            parsed = urlparse(self.path)
+            params = parse_qs(parsed.query)
+            metal = params.get('metal', ['platinum'])[0]
+            pair_name = params.get('pair', [''])[0]
+            
+            history = get_pair_history(metal, pair_name)
+            data = {
+                'pair_name': pair_name,
+                'metal': metal,
+                'history': history
+            }
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps(data, ensure_ascii=False).encode('utf-8'))
+        except Exception as e:
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'error': str(e)}).encode('utf-8'))
 
 
 def load_saved_prices():
@@ -106,26 +197,54 @@ def load_saved_prices():
 
 
 def get_gfex_prices():
-    """获取广期所铂金钯金价格 (新浪期货)"""
+    """获取广期所铂金钯金实时价格 (新浪实时行情)"""
+    import requests
     result = {'pt': None, 'pd': None, 'pt_time': None, 'pd_time': None}
     
+    # 使用新浪实时行情接口
     try:
-        pt = ak.futures_main_sina(symbol='PT0')
-        if len(pt) > 0:
-            result['pt'] = float(pt['收盘价'].iloc[-1])
-            last_date = pd.to_datetime(pt['日期'].iloc[-1])
-            result['pt_time'] = last_date.strftime('%Y.%m.%d') + ' 15:00'
+        url = 'https://hq.sinajs.cn/list=nf_PT2610,nf_PD2606'
+        headers = {'Referer': 'https://finance.sina.com.cn'}
+        resp = requests.get(url, headers=headers, timeout=5)
+        resp.encoding = 'gbk'
+        
+        for line in resp.text.strip().split('\n'):
+            if 'PT2610' in line:
+                match = line.split('"')[1] if '"' in line else ''
+                if match:
+                    parts = match.split(',')
+                    # parts[8] = 最新价, parts[6] = 买一价, parts[7] = 卖一价
+                    if len(parts) > 8:
+                        price = float(parts[8]) if parts[8] and float(parts[8]) > 0 else float(parts[6]) if parts[6] and float(parts[6]) > 0 else None
+                        if price:
+                            result['pt'] = price
+                            result['pt_time'] = datetime.now().strftime('%Y.%m.%d %H:%M')
+            elif 'PD2606' in line:
+                match = line.split('"')[1] if '"' in line else ''
+                if match:
+                    parts = match.split(',')
+                    if len(parts) > 8:
+                        price = float(parts[8]) if parts[8] and float(parts[8]) > 0 else float(parts[6]) if parts[6] and float(parts[6]) > 0 else None
+                        if price:
+                            result['pd'] = price
+                            result['pd_time'] = datetime.now().strftime('%Y.%m.%d %H:%M')
     except Exception as e:
-        print(f"广期所铂金获取失败: {e}")
-    
-    try:
-        pd_data = ak.futures_main_sina(symbol='PD0')
-        if len(pd_data) > 0:
-            result['pd'] = float(pd_data['收盘价'].iloc[-1])
-            last_date = pd.to_datetime(pd_data['日期'].iloc[-1])
-            result['pd_time'] = last_date.strftime('%Y.%m.%d') + ' 15:00'
-    except Exception as e:
-        print(f"广期所钯金获取失败: {e}")
+        print(f"广期所实时行情获取失败: {e}")
+        # 降级到日K线数据
+        try:
+            pt = ak.futures_main_sina(symbol='PT0')
+            if len(pt) > 0:
+                result['pt'] = float(pt['收盘价'].iloc[-1])
+                result['pt_time'] = pd.to_datetime(pt['日期'].iloc[-1]).strftime('%Y.%m.%d') + ' 15:00'
+        except:
+            pass
+        try:
+            pd_data = ak.futures_main_sina(symbol='PD0')
+            if len(pd_data) > 0:
+                result['pd'] = float(pd_data['收盘价'].iloc[-1])
+                result['pd_time'] = pd.to_datetime(pd_data['日期'].iloc[-1]).strftime('%Y.%m.%d') + ' 15:00'
+        except:
+            pass
     
     return result
 

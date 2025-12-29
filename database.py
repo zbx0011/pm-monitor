@@ -103,10 +103,48 @@ def init_database():
         )
     ''')
     
+    # 铂金配对价差表 (所有GFEX vs CME配对)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS platinum_pairs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            pair_name TEXT NOT NULL,
+            gfex_contract TEXT NOT NULL,
+            cme_contract TEXT NOT NULL,
+            datetime TEXT NOT NULL,
+            gfex_price REAL,
+            cme_usd REAL,
+            cme_cny REAL,
+            spread REAL,
+            spread_pct REAL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(pair_name, datetime)
+        )
+    ''')
+    
+    # 钯金配对价差表
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS palladium_pairs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            pair_name TEXT NOT NULL,
+            gfex_contract TEXT NOT NULL,
+            cme_contract TEXT NOT NULL,
+            datetime TEXT NOT NULL,
+            gfex_price REAL,
+            cme_usd REAL,
+            cme_cny REAL,
+            spread REAL,
+            spread_pct REAL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(pair_name, datetime)
+        )
+    ''')
+    
     # 创建索引
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_pt_datetime ON platinum_spread(datetime)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_pd_datetime ON palladium_spread(datetime)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_snapshot_datetime ON price_snapshots(datetime)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_pt_pairs ON platinum_pairs(pair_name, datetime)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_pd_pairs ON palladium_pairs(pair_name, datetime)')
     
     conn.commit()
     conn.close()
@@ -261,6 +299,108 @@ def get_statistics(metal):
         'min_spread_pct': row[3],
         'current_spread_pct': row[4]
     }
+
+
+def save_pair_data(metal, pair_name, gfex_contract, cme_contract, datetime_str, 
+                   gfex_price, cme_usd, cme_cny, spread, spread_pct):
+    """保存单条配对价差数据"""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    table = 'platinum_pairs' if metal == 'platinum' else 'palladium_pairs'
+    
+    cursor.execute(f'''
+        INSERT OR REPLACE INTO {table} 
+        (pair_name, gfex_contract, cme_contract, datetime, gfex_price, cme_usd, cme_cny, spread, spread_pct)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (pair_name, gfex_contract, cme_contract, datetime_str, gfex_price, cme_usd, cme_cny, spread, spread_pct))
+    
+    conn.commit()
+    conn.close()
+
+
+def save_pair_history(metal, pair_name, gfex_contract, cme_contract, history):
+    """批量保存配对历史数据"""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    table = 'platinum_pairs' if metal == 'platinum' else 'palladium_pairs'
+    
+    for item in history:
+        try:
+            cursor.execute(f'''
+                INSERT OR REPLACE INTO {table} 
+                (pair_name, gfex_contract, cme_contract, datetime, gfex_price, cme_usd, cme_cny, spread, spread_pct)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (pair_name, gfex_contract, cme_contract, 
+                  item['date'], item['gfex_price'], item['cme_usd'], item['cme_cny'], 
+                  item['spread'], item['spread_pct']))
+        except:
+            pass
+    
+    conn.commit()
+    conn.close()
+
+
+def get_all_pairs(metal):
+    """获取所有配对的最新数据"""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    table = 'platinum_pairs' if metal == 'platinum' else 'palladium_pairs'
+    
+    # 获取每个配对的最新数据
+    cursor.execute(f'''
+        SELECT pair_name, gfex_contract, cme_contract, datetime, gfex_price, cme_usd, cme_cny, spread, spread_pct
+        FROM {table}
+        WHERE (pair_name, datetime) IN (
+            SELECT pair_name, MAX(datetime) FROM {table} GROUP BY pair_name
+        )
+        ORDER BY spread_pct DESC
+    ''')
+    
+    rows = cursor.fetchall()
+    conn.close()
+    
+    pairs = {}
+    for r in rows:
+        pairs[r[0]] = {
+            'pair_name': r[0],
+            'gfex_contract': r[1],
+            'cme_contract': r[2],
+            'current': {
+                'datetime': r[3],
+                'gfex_price': r[4],
+                'cme_usd': r[5],
+                'cme_cny': r[6],
+                'spread': r[7],
+                'spread_pct': r[8]
+            }
+        }
+    
+    return pairs
+
+
+def get_pair_history(metal, pair_name, limit=500):
+    """获取指定配对的历史数据"""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    table = 'platinum_pairs' if metal == 'platinum' else 'palladium_pairs'
+    
+    cursor.execute(f'''
+        SELECT datetime, gfex_price, cme_usd, cme_cny, spread, spread_pct
+        FROM {table}
+        WHERE pair_name = ?
+        ORDER BY datetime DESC
+        LIMIT ?
+    ''', (pair_name, limit))
+    
+    rows = cursor.fetchall()
+    conn.close()
+    
+    return [{'date': r[0], 'gfex_price': r[1], 'cme_usd': r[2], 
+             'cme_cny': r[3], 'spread': r[4], 'spread_pct': r[5]} for r in reversed(rows)]
 
 
 def main():
