@@ -8,7 +8,7 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
         rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="echarts.min.js"></script>
     <style>
         :root {
             --bg-primary: #0a0e17;
@@ -2958,9 +2958,31 @@
                     if (!response.ok) throw new Error(`数据文件请求失败 (${response.status})`);
                     const allPairs = await response.json();
 
-                    // 获取当前选中的配对
+                    // 动态更新下拉菜单选项
+                    // 动态更新下拉菜单选项
                     const pairSelect = document.getElementById('platinum-pair-select');
-                    const selectedPair = pairSelect ? pairSelect.value : '2610-1026';
+                    if (pairSelect) {
+                        const currentVal = pairSelect.value;
+                        pairSelect.innerHTML = '';
+                        const sortedPairs = Object.keys(allPairs.pairs).sort();
+
+                        sortedPairs.forEach(pair => {
+                            const option = document.createElement('option');
+                            option.value = pair;
+                            option.textContent = pair;
+                            pairSelect.appendChild(option);
+                        });
+
+                        // 尝试恢复选中项
+                        if (sortedPairs.includes(currentVal)) {
+                            pairSelect.value = currentVal;
+                        } else if (sortedPairs.length > 0) {
+                            pairSelect.value = sortedPairs[0];
+                        }
+                    }
+
+                    // 获取当前选中的配对
+                    const selectedPair = pairSelect ? pairSelect.value : (Object.keys(allPairs.pairs)[0] || '2610-2610');
                     data = allPairs.pairs[selectedPair];
 
                     if (!data) throw new Error(`未找到配对 ${selectedPair} 的数据`);
@@ -2986,9 +3008,35 @@
                     if (!response.ok) throw new Error(`钯金数据文件请求失败 (${response.status})`);
                     const allPairs = await response.json();
 
-                    // 获取当前选中的配对
+                    // 动态更新下拉菜单选项
+                    // 动态更新下拉菜单选项
                     const pairSelect = document.getElementById('palladium-pair-select');
-                    const selectedPair = pairSelect ? pairSelect.value : '2606-2606';
+                    if (pairSelect) {
+                        const currentVal = pairSelect.value;
+                        pairSelect.innerHTML = '';
+                        // 获取所有配对并保留今天有数据的，或者全部
+                        // 这里我们全部显示，方便查看历史
+                        const sortedPairs = Object.keys(allPairs.pairs).sort();
+
+                        sortedPairs.forEach(pair => {
+                            // 过滤掉没有today数据的（可选，如果想看历史就不过滤）
+                            // 这里不过滤，因为用户可能想看刚才说的2604的历史
+                            const option = document.createElement('option');
+                            option.value = pair;
+                            option.textContent = pair;
+                            pairSelect.appendChild(option);
+                        });
+
+                        // 尝试恢复选中项，或者默认选中第一个
+                        if (sortedPairs.includes(currentVal)) {
+                            pairSelect.value = currentVal;
+                        } else if (sortedPairs.length > 0) {
+                            pairSelect.value = sortedPairs[0];
+                        }
+                    }
+
+                    // 获取当前选中的配对
+                    const selectedPair = pairSelect ? pairSelect.value : (Object.keys(allPairs.pairs)[0] || '2606-2606');
                     data = allPairs.pairs[selectedPair];
 
                     if (!data) throw new Error(`未找到配对 ${selectedPair} 的数据`);
