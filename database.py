@@ -381,7 +381,7 @@ def get_all_pairs(metal):
     return pairs
 
 
-def get_pair_history(metal, pair_name, limit=500):
+def get_pair_history(metal, pair_name, limit=5000):
     """获取指定配对的历史数据"""
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
