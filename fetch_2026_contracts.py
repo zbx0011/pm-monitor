@@ -103,7 +103,7 @@ def fetch_and_save_gfex(contracts):
     conn.close()
 
 def fetch_and_save_cme(tv, contracts):
-    """获取并保存CME铂金合约数据"""
+    """获取并保存CME铂金合约数据 (使用 tvDatafeed 历史数据)"""
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     
@@ -140,6 +140,47 @@ def fetch_and_save_cme(tv, contracts):
             print(f"  ✗ {symbol} 获取失败: {e}")
     
     conn.close()
+
+
+def fetch_realtime_with_scraper(contracts):
+    """使用 TradingView 爬虫获取实时价格（更准确）"""
+    try:
+        from tv_scraper import TradingViewScraper
+    except ImportError:
+        print("  ⚠ tv_scraper 模块未找到，跳过实时爬取")
+        return {}
+    
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    scraper = TradingViewScraper()
+    results = {}
+    
+    try:
+        for symbol, desc in contracts:
+            print(f"\n[爬虫] 获取 {symbol} 实时价格...")
+            price = scraper.get_price(symbol, 'NYMEX')
+            
+            if price:
+                results[symbol] = price
+                # 保存到数据库（当前时间）
+                now = datetime.now().strftime('%Y-%m-%d %H:%M')
+                cursor.execute('''
+                    INSERT OR REPLACE INTO cme_platinum_contracts 
+                    (contract, datetime, open, high, low, close, volume)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                ''', (symbol, now, price, price, price, price, 0))
+                print(f"    ✓ {symbol}: ${price} (已保存)")
+            else:
+                print(f"    ✗ {symbol}: 获取失败")
+        
+        conn.commit()
+    finally:
+        scraper.close()
+        conn.close()
+    
+    return results
+
 
 def show_summary():
     """显示数据库中的合约数据统计"""
@@ -195,6 +236,12 @@ def main():
         ('PLV2026', '2026年10月'),
     ]
     fetch_and_save_cme(tv, cme_contracts)
+    
+    # 使用爬虫获取实时价格（更准确）
+    print("\n" + "=" * 70)
+    print("使用 TradingView 爬虫获取实时价格...")
+    print("=" * 70)
+    fetch_realtime_with_scraper(cme_contracts)
     
     # 显示统计
     show_summary()
