@@ -73,34 +73,31 @@ def fetch_cme_hourly(tv, symbol):
         print(f"  Error fetching CME {symbol}: {e}")
         return None
 
-def save_hourly_history(metal, pair_name, gfex_contract, cme_contract, history):
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    table = 'platinum_pairs' if metal == 'platinum' else 'palladium_pairs'
-    
-    count = 0
-    for item in history:
-        try:
-            # Use INSERT OR IGNORE to respect existing minute data
-            cursor.execute(f'''
-                INSERT OR IGNORE INTO {table} 
-                (pair_name, gfex_contract, cme_contract, datetime, gfex_price, cme_usd, cme_cny, spread, spread_pct)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (pair_name, gfex_contract, cme_contract, 
-                  item['date'], item['gfex_price'], item['cme_usd'], item['cme_cny'], 
-                  item['spread'], item['spread_pct']))
-            if cursor.rowcount > 0:
-                count += 1
-        except Exception as e:
-            # print(e)
-            pass
-    
-    conn.commit()
-    conn.close()
-    return count
+def fetch_fx_hourly(tv):
+    try:
+        # Fetch USDCNH hourly data
+        # n_bars=1000 to cover the whole month
+        df = tv.get_hist(symbol='USDCNH', exchange='FX_IDC', interval=Interval.in_1_hour, n_bars=1000)
+        if df is None or df.empty:
+            print("  Warning: USDCNH data empty. Using static rate.")
+            return None
+        df.index = pd.to_datetime(df.index)
+        df = df.sort_index()
+        df['rate'] = df['close'].astype(float)
+        return df[['rate']]
+    except Exception as e:
+        print(f"  Error fetching FX data: {e}")
+        return None
 
-def process_metal(metal_name, gfex_symbols, cme_map, tv, rate):
+def process_metal(metal_name, gfex_symbols, cme_map, tv, default_rate):
     print(f"\nProcessing {metal_name}...")
+    
+    # 0. Fetch FX data
+    fx_df = fetch_fx_hourly(tv)
+    if fx_df is not None:
+        print(f"  Fetched {len(fx_df)} FX rate records.")
+    else:
+        print(f"  Using default rate: {default_rate}")
     
     # 1. Fetch all data
     gfex_data = {}
@@ -129,29 +126,45 @@ def process_metal(metal_name, gfex_symbols, cme_map, tv, rate):
             df_g = gfex_data[g_sym].copy()
             df_c = cme_data[c_sym].copy()
             
-            # Merge
+            # Merge Prices
             df_merged = pd.merge_asof(
                 df_g, df_c, 
                 left_index=True, right_index=True,
                 suffixes=('_gfex', '_cme'),
                 direction='nearest',
-                tolerance=pd.Timedelta('2h') # Hourly data might be slightly offset
+                tolerance=pd.Timedelta('2h')
             ).dropna()
             
             if df_merged.empty:
                 continue
                 
+            # Merge FX Rate
+            if fx_df is not None:
+                df_merged = pd.merge_asof(
+                    df_merged, fx_df,
+                    left_index=True, right_index=True,
+                    direction='nearest',
+                    tolerance=pd.Timedelta('2h')
+                )
+                # If FX missing for some rows, fill with default or drop? 
+                # Better fill with last available or default
+                df_merged['rate'] = df_merged['rate'].fillna(default_rate)
+            else:
+                df_merged['rate'] = default_rate
+
             # Calculate
             history = []
             for idx, row in df_merged.iterrows():
                 gfex_price = row['price_gfex']
                 cme_usd = row['price_cme']
-                cme_cny = cme_usd * rate / OZ_TO_GRAM
+                current_rate = row['rate']
+                
+                cme_cny = cme_usd * current_rate / OZ_TO_GRAM
                 spread = gfex_price - cme_cny
                 spread_pct = (spread / cme_cny) * 100
                 
                 history.append({
-                    'date': idx.strftime('%Y-%m-%d %H:%M'), # Format matches DB
+                    'date': idx.strftime('%Y-%m-%d %H:%M'),
                     'gfex_price': gfex_price,
                     'cme_usd': cme_usd,
                     'cme_cny': cme_cny,
