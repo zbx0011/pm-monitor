@@ -73,6 +73,32 @@ def fetch_cme_hourly(tv, symbol):
         print(f"  Error fetching CME {symbol}: {e}")
         return None
 
+def save_hourly_history(metal, pair_name, gfex_contract, cme_contract, history):
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    table = 'platinum_pairs' if metal == 'platinum' else 'palladium_pairs'
+    
+    count = 0
+    for item in history:
+        try:
+            # Use INSERT OR IGNORE to respect existing minute data
+            cursor.execute(f'''
+                INSERT OR IGNORE INTO {table} 
+                (pair_name, gfex_contract, cme_contract, datetime, gfex_price, cme_usd, cme_cny, spread, spread_pct)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (pair_name, gfex_contract, cme_contract, 
+                  item['date'], item['gfex_price'], item['cme_usd'], item['cme_cny'], 
+                  item['spread'], item['spread_pct']))
+            if cursor.rowcount > 0:
+                count += 1
+        except Exception as e:
+            # print(e)
+            pass
+    
+    conn.commit()
+    conn.close()
+    return count
+
 def fetch_fx_hourly(tv):
     try:
         # Fetch USDCNH hourly data
