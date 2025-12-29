@@ -17,8 +17,16 @@ import time
 import re
 
 class TradingViewScraper:
-    def __init__(self, proxy="127.0.0.1:7890"):
+    def __init__(self, proxy="127.0.0.1:7890", use_profile=True):
+        """
+        初始化爬虫
+        
+        Args:
+            proxy: 代理地址
+            use_profile: 是否使用用户的 Chrome 配置（以获取付费账号的实时数据）
+        """
         self.proxy = proxy
+        self.use_profile = use_profile
         self.driver = None
         
     def _init_driver(self):
@@ -33,7 +41,20 @@ class TradingViewScraper:
         saved_https_proxy_lower = os.environ.pop('https_proxy', None)
             
         chrome_options = Options()
-        chrome_options.add_argument("--headless=new")
+        
+        # 使用单独的 Chrome 配置目录（避免与主浏览器冲突）
+        if self.use_profile:
+            # 使用项目目录下的独立 Chrome 配置
+            profile_dir = os.path.join(os.path.dirname(__file__), 'chrome_profile')
+            if not os.path.exists(profile_dir):
+                os.makedirs(profile_dir)
+                print(f"    创建 Chrome 配置目录: {profile_dir}")
+                print("    ⚠ 首次运行需要手动登录 TradingView！")
+            chrome_options.add_argument(f'--user-data-dir={profile_dir}')
+            print("    使用独立 Chrome 配置")
+        else:
+            chrome_options.add_argument("--headless=new")
+            
         chrome_options.add_argument("--disable-gpu")
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
@@ -77,36 +98,57 @@ class TradingViewScraper:
             time.sleep(4)  # 等待 JS 执行
             
             # 获取价格
-            # 方法1: 从 title 获取
+            # 方法1: 从 title 获取（最可靠，title 包含当前合约价格）
             for _ in range(10):
                 title = self.driver.title
+                # 匹配格式: "PLJ2026 2345.6 ▲" 或 "2345.6 ▲"
                 match = re.search(r'([0-9,]+\.?\d*)\s*[▲▼]', title)
                 if match:
                     price = float(match.group(1).replace(',', ''))
-                    print(f"    ✓ 价格: ${price}")
-                    break
+                    # 验证价格在合理范围内（铂金/钯金应该在 500-5000 之间）
+                    if 500 <= price <= 5000:
+                        print(f"    ✓ 价格: ${price}")
+                        break
+                    else:
+                        price = None  # 重置，可能匹配到了错误的价格
                 time.sleep(0.5)
             
-            # 方法2: 从 DOM 获取价格
+            # 方法2: 从主价格显示区域获取（更精确的选择器）
             if price is None:
                 try:
-                    selectors = [
-                        'span[class*="last-"]',
-                        '[data-test-id="qc-price"]',
-                        '.tv-symbol-price-quote__value'
-                    ]
-                    for selector in selectors:
-                        elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
-                        for el in elements:
-                            text = el.text.strip().replace(',', '')
-                            if text and re.match(r'^\d+\.?\d*$', text):
-                                p = float(text)
-                                if p > 100:
-                                    price = p
-                                    print(f"    ✓ 价格: ${price}")
-                                    break
-                        if price:
-                            break
+                    # 使用 JavaScript 获取主价格显示区域的价格
+                    js_code = """
+                        // 查找页面主体的大价格显示
+                        // 通常在 class 包含 'price' 或 'last' 的大元素中
+                        const mainContent = document.querySelector('[class*="symbolHeader"]') || 
+                                           document.querySelector('[class*="tickerItem"]') ||
+                                           document.body;
+                        
+                        if (mainContent) {
+                            // 查找大字号的价格元素
+                            const priceElements = mainContent.querySelectorAll('[class*="last"], [class*="price"]');
+                            for (let el of priceElements) {
+                                const style = window.getComputedStyle(el);
+                                const fontSize = parseFloat(style.fontSize);
+                                // 只选择字号较大的元素（主价格通常字号 >= 24px）
+                                if (fontSize >= 24) {
+                                    const text = el.textContent.trim().replace(/,/g, '');
+                                    const match = text.match(/^([\\d,]+\\.?\\d*)$/);
+                                    if (match) {
+                                        const price = parseFloat(match[1]);
+                                        if (price >= 500 && price <= 5000) {
+                                            return price;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        return null;
+                    """
+                    result = self.driver.execute_script(js_code)
+                    if result:
+                        price = float(result)
+                        print(f"    ✓ 价格: ${price}")
                 except Exception as e:
                     print(f"    DOM 查找失败: {e}")
             
