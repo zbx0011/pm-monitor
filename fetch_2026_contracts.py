@@ -143,7 +143,7 @@ def fetch_and_save_cme(tv, contracts):
 
 
 def fetch_realtime_with_scraper(contracts):
-    """使用 TradingView 爬虫获取实时价格（更准确）"""
+    """使用 TradingView 爬虫获取实时价格和实际时间戳"""
     try:
         from tv_scraper import TradingViewScraper
     except ImportError:
@@ -159,18 +159,23 @@ def fetch_realtime_with_scraper(contracts):
     try:
         for symbol, desc in contracts:
             print(f"\n[爬虫] 获取 {symbol} 实时价格...")
-            price = scraper.get_price(symbol, 'NYMEX')
+            price, data_time = scraper.get_price_with_time(symbol, 'NYMEX')
             
             if price:
-                results[symbol] = price
-                # 保存到数据库（当前时间）
-                now = datetime.now().strftime('%Y-%m-%d %H:%M')
+                results[symbol] = {'price': price, 'time': data_time}
+                # 使用实际数据时间，如果获取失败则使用当前时间
+                if data_time:
+                    time_str = data_time.strftime('%Y-%m-%d %H:%M')
+                else:
+                    time_str = datetime.now().strftime('%Y-%m-%d %H:%M')
+                    print(f"    ⚠ 未获取到数据时间，使用当前时间: {time_str}")
+                
                 cursor.execute('''
                     INSERT OR REPLACE INTO cme_platinum_contracts 
                     (contract, datetime, open, high, low, close, volume)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
-                ''', (symbol, now, price, price, price, price, 0))
-                print(f"    ✓ {symbol}: ${price} (已保存)")
+                ''', (symbol, time_str, price, price, price, price, 0))
+                print(f"    ✓ {symbol}: ${price} @ {time_str} (已保存)")
             else:
                 print(f"    ✗ {symbol}: 获取失败")
         

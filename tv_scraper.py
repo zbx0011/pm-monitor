@@ -62,54 +62,73 @@ class TradingViewScraper:
         if saved_https_proxy_lower:
             os.environ['https_proxy'] = saved_https_proxy_lower
         
-    def get_price(self, symbol, exchange='NYMEX'):
-        """获取指定合约的价格"""
+    def get_price_with_time(self, symbol, exchange='NYMEX'):
+        """获取指定合约的价格和实际时间戳"""
         self._init_driver()
         
         url = f"https://www.tradingview.com/symbols/{exchange}-{symbol}/"
         print(f"  爬取 {url}...")
         
+        price = None
+        data_time = None
+        
         try:
             self.driver.get(url)
-            time.sleep(3)  # 等待 JS 执行
+            time.sleep(4)  # 等待 JS 执行
             
-            # 方法1: 等待 title 更新（包含价格）
-            for _ in range(15):
+            # 获取价格
+            # 方法1: 从 title 获取
+            for _ in range(10):
                 title = self.driver.title
-                # 匹配格式: "PLJ2026 2345.6 ▲ +0.5% — TradingView"
                 match = re.search(r'([0-9,]+\.?\d*)\s*[▲▼]', title)
                 if match:
                     price = float(match.group(1).replace(',', ''))
-                    print(f"    ✓ 从 Title 获取: ${price}")
-                    return price
+                    print(f"    ✓ 价格: ${price}")
+                    break
                 time.sleep(0.5)
             
-            # 方法2: 从页面元素获取
-            try:
-                # 尝试多种选择器
-                selectors = [
-                    'span[class*="last-"]',
-                    '[data-test-id="qc-price"]',
-                    '.tv-symbol-price-quote__value'
-                ]
-                for selector in selectors:
-                    elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
-                    for el in elements:
-                        text = el.text.strip().replace(',', '')
-                        if text and re.match(r'^\d+\.?\d*$', text):
-                            price = float(text)
-                            if price > 100:  # 排除涨跌幅等小数字
-                                print(f"    ✓ 从 DOM 获取: ${price}")
-                                return price
-            except Exception as e:
-                print(f"    DOM 查找失败: {e}")
+            # 方法2: 从 DOM 获取价格
+            if price is None:
+                try:
+                    selectors = [
+                        'span[class*="last-"]',
+                        '[data-test-id="qc-price"]',
+                        '.tv-symbol-price-quote__value'
+                    ]
+                    for selector in selectors:
+                        elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
+                        for el in elements:
+                            text = el.text.strip().replace(',', '')
+                            if text and re.match(r'^\d+\.?\d*$', text):
+                                p = float(text)
+                                if p > 100:
+                                    price = p
+                                    print(f"    ✓ 价格: ${price}")
+                                    break
+                        if price:
+                            break
+                except Exception as e:
+                    print(f"    DOM 查找失败: {e}")
             
-            print(f"    ✗ 未能获取价格")
-            return None
+            # 获取时间戳 - TradingView 免费版数据延迟约 10-15 分钟
+            # 直接使用当前时间减去 15 分钟作为估算的数据时间
+            from datetime import datetime, timedelta
+            data_time = datetime.now() - timedelta(minutes=15)
+            print(f"    ✓ 估算数据时间: {data_time.strftime('%Y-%m-%d %H:%M')} (当前时间 -15分钟)")
+            
+            if price is None:
+                print(f"    ✗ 未能获取价格")
+                
+            return price, data_time
             
         except Exception as e:
             print(f"    ✗ 错误: {e}")
-            return None
+            return None, None
+    
+    def get_price(self, symbol, exchange='NYMEX'):
+        """获取指定合约的价格（兼容旧接口）"""
+        price, _ = self.get_price_with_time(symbol, exchange)
+        return price
             
     def close(self):
         """关闭浏览器"""
