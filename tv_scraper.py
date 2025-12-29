@@ -110,11 +110,10 @@ class TradingViewScraper:
                 except Exception as e:
                     print(f"    DOM 查找失败: {e}")
             
-            # 获取时间戳 - TradingView 免费版数据延迟约 10-15 分钟
-            # 直接使用当前时间减去 15 分钟作为估算的数据时间
-            from datetime import datetime, timedelta
-            data_time = datetime.now() - timedelta(minutes=15)
-            print(f"    ✓ 估算数据时间: {data_time.strftime('%Y-%m-%d %H:%M')} (当前时间 -15分钟)")
+            # 数据时间 - 用户已订阅实时数据，使用当前时间
+            from datetime import datetime
+            data_time = datetime.now()
+            print(f"    ✓ 数据时间: {data_time.strftime('%Y-%m-%d %H:%M')} (实时)")
             
             if price is None:
                 print(f"    ✗ 未能获取价格")
