@@ -58,7 +58,11 @@ def check_and_alert(metal, pair_name, spread_pct, current_gfex, current_cme):
 
     if violation:
         state = load_state()
-        last_time_str = state.get(pair_name)
+        
+        # 使用品种（metal）作为冷却键，而不是具体配对（pair_name）
+        # 这样同一品种的所有配对共享同一个冷却期
+        cooldown_key = metal  # 例如: "platinum" 或 "palladium"
+        last_time_str = state.get(cooldown_key)
         
         should_alert = True
         if last_time_str:
@@ -66,7 +70,7 @@ def check_and_alert(metal, pair_name, spread_pct, current_gfex, current_cme):
             cooldown = config.get('cooldown_minutes', 60)
             if datetime.now() - last_time < timedelta(minutes=cooldown):
                 should_alert = False
-                print(f"  [Alert] {pair_name} 触发 {violation}，但在冷却期内 (上次: {last_time_str})")
+                print(f"  [Alert] {pair_name} 触发 {violation}，但 {metal} 品种在冷却期内 (上次: {last_time_str})")
 
         if should_alert:
             message = (
@@ -86,9 +90,11 @@ def check_and_alert(metal, pair_name, spread_pct, current_gfex, current_cme):
                 response = requests.post(webhook_url, json=payload, timeout=10)
                 if response.status_code == 200:
                     print(f"  [Alert] ✅ 警报已发送: {pair_name} {spread_pct:.2f}%")
-                    state[pair_name] = datetime.now().isoformat()
+                    # 更新品种的冷却时间，而不是具体配对
+                    state[cooldown_key] = datetime.now().isoformat()
                     save_state(state)
                 else:
                     print(f"  [Alert] ❌ 发送失败: {response.status_code} {response.text}")
             except Exception as e:
                 print(f"  [Alert] ❌ 发送出错: {e}")
+
