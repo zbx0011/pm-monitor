@@ -825,26 +825,78 @@
                     <p>广期所 vs 国际市场 实时价差分析</p>
                 </div>
             </div>
-            <div class="header-right" style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
-                <!-- 汇率、时间、溢价状态 -->
-                <div
-                    style="display: flex; align-items: center; gap: 12px; font-size: 0.8rem; color: var(--text-secondary);">
-                    <span>📊 <span id="exchange-rate">USD/CNY = 7.04</span></span>
+            <div class="header-right" style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+                <!-- 合约选择器 -->
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="color: var(--text-muted); font-size: 0.8rem;">监控:</span>
+                    <!-- 品种选择 -->
+                    <select id="product-select" onchange="saveHeaderSelections(); onProductChange()"
+                        style="padding: 6px 12px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 6px; color: var(--accent-gold); font-size: 0.85rem; cursor: pointer; font-weight: 600;">
+                        <option value="platinum">💎 铂金</option>
+                        <option value="palladium">🔮 钯金</option>
+                    </select>
+                    <!-- 广期所合约 -->
+                    <select id="gfex-contract-select" onchange="saveHeaderSelections(); onContractChange()"
+                        style="padding: 6px 12px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); font-size: 0.85rem; cursor: pointer;">
+                        <option value="PT2606">PT2606</option>
+                        <option value="PT2610">PT2610</option>
+                    </select>
+                    <span style="color: var(--text-muted);">vs</span>
+                    <!-- NYMEX合约 -->
+                    <select id="nymex-contract-select" onchange="saveHeaderSelections(); onContractChange()"
+                        style="padding: 6px 12px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); font-size: 0.85rem; cursor: pointer;">
+                        <option value="PLF2026">PLF2026</option>
+                        <option value="PLJ2026" selected>PLJ2026</option>
+                        <option value="PLN2026">PLN2026</option>
+                        <option value="PLV2026">PLV2026</option>
+                    </select>
                 </div>
 
-                <div class="status-indicator" style="display: flex; gap: 12px;">
-                    <div style="display: flex; align-items: center; gap: 4px;">
-                        <div id="gfex-dot" class="status-dot"></div>
-                        <span id="gfex-status" style="font-size: 0.7rem;">广期所</span>
+                <!-- 价格显示区 -->
+                <div
+                    style="display: flex; align-items: center; gap: 16px; padding: 8px 16px; background: var(--bg-card); border-radius: 8px;">
+                    <!-- 广期所价格 -->
+                    <div style="text-align: center;">
+                        <div style="font-size: 1.1rem; font-weight: 600; color: var(--text-primary);">
+                            ¥<span id="header-gfex-price">--</span>
+                        </div>
+                        <div style="font-size: 0.7rem; color: var(--text-muted);">
+                            <span id="header-gfex-time">--</span>
+                        </div>
+                        <div id="header-gfex-change" style="font-size: 0.75rem; font-weight: 600;">--</div>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 4px;">
-                        <div id="nymex-dot" class="status-dot"></div>
-                        <span id="nymex-status" style="font-size: 0.7rem;">NYMEX</span>
+
+                    <div style="color: var(--text-muted); font-size: 0.8rem;">|</div>
+
+                    <!-- NYMEX价格 -->
+                    <div style="text-align: center;">
+                        <div style="font-size: 1.1rem; font-weight: 600; color: var(--text-primary);">
+                            $<span id="header-nymex-price">--</span>
+                            <span id="header-nymex-cny"
+                                style="font-size: 0.8rem; color: var(--text-secondary); margin-left: 4px;">(¥--)</span>
+                        </div>
+                        <div style="font-size: 0.7rem; color: var(--text-muted);">
+                            <span id="header-nymex-time">--</span>
+                        </div>
+                        <div id="header-nymex-change" style="font-size: 0.75rem; font-weight: 600;">--</div>
+                    </div>
+
+                    <div style="color: var(--text-muted); font-size: 0.8rem;">|</div>
+
+                    <!-- 差价比率 -->
+                    <div style="text-align: center;">
+                        <div style="font-size: 0.7rem; color: var(--text-muted);">最新差价</div>
+                        <div id="header-spread-latest"
+                            style="font-size: 1.1rem; font-weight: 700; color: var(--positive);">--%</div>
+                        <div id="header-spread-sync"
+                            style="font-size: 0.7rem; color: var(--text-secondary); display: none;">
+                            待同步差价: <span id="header-spread-sync-value">--%</span>
+                        </div>
                     </div>
                 </div>
-                <span style="font-size: 0.7rem; color: var(--text-muted);">最新获取时间: <span id="data-time">--</span></span>
+
                 <button class="refresh-btn" onclick="refreshData()">
-                    🔄 刷新数据
+                    🔄 刷新
                 </button>
             </div>
         </header>
@@ -1429,6 +1481,40 @@
             lastUpdate: null
         };
 
+        // ===== localStorage 持久化选择 =====
+        function saveHeaderSelections() {
+            const product = document.getElementById('product-select')?.value;
+            const gfex = document.getElementById('gfex-contract-select')?.value;
+            const nymex = document.getElementById('nymex-contract-select')?.value;
+            if (product) localStorage.setItem('header_product', product);
+            if (gfex) localStorage.setItem('header_gfex_contract', gfex);
+            if (nymex) localStorage.setItem('header_nymex_contract', nymex);
+        }
+
+        function restoreHeaderSelections() {
+            const product = localStorage.getItem('header_product');
+            const gfex = localStorage.getItem('header_gfex_contract');
+            const nymex = localStorage.getItem('header_nymex_contract');
+
+            if (product) {
+                const productEl = document.getElementById('product-select');
+                if (productEl) productEl.value = product;
+            }
+            if (gfex) {
+                const gfexEl = document.getElementById('gfex-contract-select');
+                if (gfexEl) gfexEl.value = gfex;
+            }
+            if (nymex) {
+                const nymexEl = document.getElementById('nymex-contract-select');
+                if (nymexEl) nymexEl.value = nymex;
+            }
+        }
+
+        // 在页面加载时恢复选择
+        document.addEventListener('DOMContentLoaded', () => {
+            restoreHeaderSelections();
+        });
+
         // 获取广期所数据 (通过新浪)
         async function fetchGFEXPrice() {
             const symbols = ['PT2606', 'PD2606'];
@@ -1471,12 +1557,16 @@
             }
         }
 
-        // 更新显示
+        // 更新显示 (已添加元素存在性检查)
         function updateDisplay() {
             const now = new Date();
-            document.getElementById('last-update').textContent = now.toLocaleString('zh-CN');
-            document.getElementById('data-time').textContent = now.toLocaleString('zh-CN');
-            document.getElementById('exchange-rate').textContent = `USD/CNY = ${marketData.exchangeRate.toFixed(4)}`;
+            const lastUpdateEl = document.getElementById('last-update');
+            const dataTimeEl = document.getElementById('data-time');
+            const exchangeRateEl = document.getElementById('exchange-rate');
+
+            if (lastUpdateEl) lastUpdateEl.textContent = now.toLocaleString('zh-CN');
+            if (dataTimeEl) dataTimeEl.textContent = now.toLocaleString('zh-CN');
+            if (exchangeRateEl) exchangeRateEl.textContent = `USD/CNY = ${marketData.exchangeRate.toFixed(4)}`;
 
             // 国际价格 (从JSON动态获取)
             const intlPrices = {
@@ -1492,25 +1582,28 @@
                 const ptSpread = ptGfex - ptIntlCny;
                 const ptSpreadPct = (ptSpread / ptIntlCny) * 100;
 
-                document.getElementById('pt-gfex').textContent = ptGfex.toFixed(2);
-                document.getElementById('pt-intl').textContent = ptIntlCny.toFixed(2);
-                document.getElementById('pt-intl-usd').textContent = ptIntlUsd.toFixed(2);
-                document.getElementById('pt-spread').textContent = (ptSpread >= 0 ? '+' : '') + ptSpread.toFixed(2);
-                document.getElementById('pt-spread-pct').textContent = (ptSpreadPct >= 0 ? '+' : '') + ptSpreadPct.toFixed(2) + '%';
-
-                // 更新样式
+                const ptGfexEl = document.getElementById('pt-gfex');
+                const ptIntlEl = document.getElementById('pt-intl');
+                const ptIntlUsdEl = document.getElementById('pt-intl-usd');
                 const ptSpreadEl = document.getElementById('pt-spread');
                 const ptSpreadPctEl = document.getElementById('pt-spread-pct');
                 const ptDirectionEl = document.getElementById('pt-direction');
 
+                if (ptGfexEl) ptGfexEl.textContent = ptGfex.toFixed(2);
+                if (ptIntlEl) ptIntlEl.textContent = ptIntlCny.toFixed(2);
+                if (ptIntlUsdEl) ptIntlUsdEl.textContent = ptIntlUsd.toFixed(2);
+                if (ptSpreadEl) ptSpreadEl.textContent = (ptSpread >= 0 ? '+' : '') + ptSpread.toFixed(2);
+                if (ptSpreadPctEl) ptSpreadPctEl.textContent = (ptSpreadPct >= 0 ? '+' : '') + ptSpreadPct.toFixed(2) + '%';
+
+                // 更新样式
                 if (ptSpread >= 0) {
-                    ptSpreadEl.className = 'spread-value positive';
-                    ptSpreadPctEl.className = 'spread-pct positive';
-                    ptDirectionEl.innerHTML = '🔴 广期所溢价 → 做空广期所 + 做多国际';
+                    if (ptSpreadEl) ptSpreadEl.className = 'spread-value positive';
+                    if (ptSpreadPctEl) ptSpreadPctEl.className = 'spread-pct positive';
+                    if (ptDirectionEl) ptDirectionEl.innerHTML = '🔴 广期所溢价 → 做空广期所 + 做多国际';
                 } else {
-                    ptSpreadEl.className = 'spread-value negative';
-                    ptSpreadPctEl.className = 'spread-pct negative';
-                    ptDirectionEl.innerHTML = '🟢 广期所折价 → 做多广期所 + 做空国际';
+                    if (ptSpreadEl) ptSpreadEl.className = 'spread-value negative';
+                    if (ptSpreadPctEl) ptSpreadPctEl.className = 'spread-pct negative';
+                    if (ptDirectionEl) ptDirectionEl.innerHTML = '🟢 广期所折价 → 做多广期所 + 做空国际';
                 }
             }
 
@@ -1522,25 +1615,28 @@
                 const pdSpread = pdGfex - pdIntlCny;
                 const pdSpreadPct = (pdSpread / pdIntlCny) * 100;
 
-                document.getElementById('pd-gfex').textContent = pdGfex.toFixed(2);
-                document.getElementById('pd-intl').textContent = pdIntlCny.toFixed(2);
-                document.getElementById('pd-intl-usd').textContent = pdIntlUsd.toFixed(2);
-                document.getElementById('pd-spread').textContent = (pdSpread >= 0 ? '+' : '') + pdSpread.toFixed(2);
-                document.getElementById('pd-spread-pct').textContent = (pdSpreadPct >= 0 ? '+' : '') + pdSpreadPct.toFixed(2) + '%';
-
-                // 更新样式
+                const pdGfexEl = document.getElementById('pd-gfex');
+                const pdIntlEl = document.getElementById('pd-intl');
+                const pdIntlUsdEl = document.getElementById('pd-intl-usd');
                 const pdSpreadEl = document.getElementById('pd-spread');
                 const pdSpreadPctEl = document.getElementById('pd-spread-pct');
                 const pdDirectionEl = document.getElementById('pd-direction');
 
+                if (pdGfexEl) pdGfexEl.textContent = pdGfex.toFixed(2);
+                if (pdIntlEl) pdIntlEl.textContent = pdIntlCny.toFixed(2);
+                if (pdIntlUsdEl) pdIntlUsdEl.textContent = pdIntlUsd.toFixed(2);
+                if (pdSpreadEl) pdSpreadEl.textContent = (pdSpread >= 0 ? '+' : '') + pdSpread.toFixed(2);
+                if (pdSpreadPctEl) pdSpreadPctEl.textContent = (pdSpreadPct >= 0 ? '+' : '') + pdSpreadPct.toFixed(2) + '%';
+
+                // 更新样式
                 if (pdSpread >= 0) {
-                    pdSpreadEl.className = 'spread-value positive';
-                    pdSpreadPctEl.className = 'spread-pct positive';
-                    pdDirectionEl.innerHTML = '🔴 广期所溢价 → 做空广期所 + 做多国际';
+                    if (pdSpreadEl) pdSpreadEl.className = 'spread-value positive';
+                    if (pdSpreadPctEl) pdSpreadPctEl.className = 'spread-pct positive';
+                    if (pdDirectionEl) pdDirectionEl.innerHTML = '🔴 广期所溢价 → 做空广期所 + 做多国际';
                 } else {
-                    pdSpreadEl.className = 'spread-value negative';
-                    pdSpreadPctEl.className = 'spread-pct negative';
-                    pdDirectionEl.innerHTML = '🟢 广期所折价 → 做多广期所 + 做空国际';
+                    if (pdSpreadEl) pdSpreadEl.className = 'spread-value negative';
+                    if (pdSpreadPctEl) pdSpreadPctEl.className = 'spread-pct negative';
+                    if (pdDirectionEl) pdDirectionEl.innerHTML = '🟢 广期所折价 → 做多广期所 + 做空国际';
                 }
             }
 
@@ -1551,6 +1647,8 @@
         // 更新告警
         function updateAlert() {
             const alertBanner = document.getElementById('alert-banner');
+            if (!alertBanner) return;  // 如果元素不存在，直接返回
+
             const ptGfex = marketData.gfex.PT2606 || 0;
             const pdGfex = marketData.gfex.PD2606 || 0;
 
@@ -1590,27 +1688,267 @@
             }
         }
 
-        // 刷新数据
-        // 刷新数据
+        // ===== 顶部合约监控功能 =====
+        const HEADER_EXCHANGE_RATE = 7.04;
+        const HEADER_OZ_TO_GRAM = 31.1035;
+
+        // 合约配置
+        const CONTRACT_CONFIG = {
+            platinum: {
+                gfex: ['PT2606', 'PT2610'],
+                nymex: ['PLF2026', 'PLJ2026', 'PLN2026', 'PLV2026'],
+                api: '/api/platinum-pairs'
+            },
+            palladium: {
+                gfex: ['PD2606', 'PD2610'],
+                nymex: ['PAH2026', 'PAM2026', 'PAU2026', 'PAZ2026'],
+                api: '/api/palladium-pairs'
+            }
+        };
+
+        // 缓存配对数据
+        let cachedPairsData = null;
+
+        // 品种选择变化时触发
+        function onProductChange() {
+            const product = document.getElementById('product-select').value;
+            const config = CONTRACT_CONFIG[product];
+
+            // 更新广期所选项
+            const gfexSelect = document.getElementById('gfex-contract-select');
+            gfexSelect.innerHTML = config.gfex.map(c => `<option value="${c}">${c}</option>`).join('');
+
+            // 更新NYMEX选项
+            const nymexSelect = document.getElementById('nymex-contract-select');
+            nymexSelect.innerHTML = config.nymex.map((c, i) =>
+                `<option value="${c}" ${i === 1 ? 'selected' : ''}>${c}</option>`
+            ).join('');
+
+            // 清除缓存并更新价格
+            cachedPairsData = null;
+            updateHeaderPrices();
+        }
+
+        // 合约选择变化时触发
+        async function onContractChange() {
+            await updateHeaderPrices();
+        }
+
+        // 更新顶部价格显示
+        async function updateHeaderPrices() {
+            const product = document.getElementById('product-select')?.value || 'platinum';
+            const gfexContract = document.getElementById('gfex-contract-select').value;
+            const nymexContract = document.getElementById('nymex-contract-select').value;
+            const config = CONTRACT_CONFIG[product];
+
+            try {
+                // 获取配对数据 (API返回对象格式)
+                const res = await fetch(config.api);
+                if (!res.ok) {
+                    console.error('API请求失败:', res.status);
+                    return;
+                }
+                const data = await res.json();
+                const pairs = data.pairs || data;
+
+                if (!pairs || Object.keys(pairs).length === 0) {
+                    console.log('无配对数据');
+                    return;
+                }
+
+                // 查找匹配的配对 (GFEX数据 + 同步时刻的CME价格)
+                let gfexData = null;
+
+                for (const pairKey in pairs) {
+                    const pair = pairs[pairKey];
+                    if (!pair || !pair.current) continue;
+                    const current = pair.current;
+
+                    // 找到匹配GFEX合约的配对,同时获取同步时刻的CME价格
+                    if (pair.gfex_contract === gfexContract && pair.cme_contract === nymexContract && !gfexData) {
+                        gfexData = {
+                            price: current.gfex_price,
+                            time: current.datetime,
+                            openPrice: current.gfex_price,
+                            syncCmeUsd: current.cme_usd  // 同步时刻的CME价格
+                        };
+                        break;
+                    }
+                }
+                // 如果没找到精确配对,至少获取GFEX价格
+                if (!gfexData) {
+                    for (const pairKey in pairs) {
+                        const pair = pairs[pairKey];
+                        if (!pair || !pair.current) continue;
+                        if (pair.gfex_contract === gfexContract) {
+                            gfexData = {
+                                price: pair.current.gfex_price,
+                                time: pair.current.datetime,
+                                openPrice: pair.current.gfex_price,
+                                syncCmeUsd: pair.current.cme_usd
+                            };
+                            break;
+                        }
+                    }
+                }
+
+                // 获取NYMEX实时数据 (从独立API)
+                let nymexData = null;
+                try {
+                    const cmeRes = await fetch('/api/cme-latest');
+                    if (cmeRes.ok) {
+                        const cmeData = await cmeRes.json();
+                        if (cmeData[nymexContract]) {
+                            const cme = cmeData[nymexContract];
+                            nymexData = {
+                                price: cme.price,
+                                time: cme.datetime,
+                                openPrice: cme.open_price
+                            };
+                        }
+                    }
+                } catch (e) {
+                    console.error('获取CME实时数据失败:', e);
+                }
+
+                // 获取广期所今日开盘价 (从独立API)
+                try {
+                    const gfexRes = await fetch('/api/gfex-latest');
+                    if (gfexRes.ok && gfexData) {
+                        const gfexApiData = await gfexRes.json();
+                        if (gfexApiData[gfexContract]) {
+                            gfexData.openPrice = gfexApiData[gfexContract].open_price;
+                        }
+                    }
+                } catch (e) {
+                    console.error('获取GFEX开盘价失败:', e);
+                }
+
+                // 更新广期所价格显示
+                if (gfexData && gfexData.price) {
+                    document.getElementById('header-gfex-price').textContent = gfexData.price.toFixed(2);
+                    document.getElementById('header-gfex-time').textContent = gfexData.time || '--';
+                    updatePriceChange('header-gfex-change', gfexData.price, gfexData.openPrice);
+                }
+
+                // 更新NYMEX价格显示
+                if (nymexData && nymexData.price) {
+                    document.getElementById('header-nymex-price').textContent = nymexData.price.toFixed(1);
+                    // 显示换算后的人民币价格
+                    const nymexCnyPerGram = (nymexData.price * HEADER_EXCHANGE_RATE / HEADER_OZ_TO_GRAM).toFixed(2);
+                    document.getElementById('header-nymex-cny').textContent = '(¥' + nymexCnyPerGram + ')';
+                    document.getElementById('header-nymex-time').textContent = nymexData.time || '--';
+                    updatePriceChange('header-nymex-change', nymexData.price, nymexData.openPrice);
+                }
+
+                // 计算并显示差价比率
+                if (gfexData && nymexData && gfexData.price && nymexData.price) {
+                    // 最新差价 (使用最新NYMEX价格,可能时间不同步)
+                    const nymexCny = nymexData.price * HEADER_EXCHANGE_RATE / HEADER_OZ_TO_GRAM;
+                    const spreadPct = ((gfexData.price - nymexCny) / nymexCny * 100).toFixed(2);
+                    const spreadEl = document.getElementById('header-spread-latest');
+                    spreadEl.textContent = (spreadPct >= 0 ? '+' : '') + spreadPct + '%';
+                    spreadEl.style.color = spreadPct >= 15 ? 'var(--positive)' :
+                        spreadPct >= 10 ? 'var(--warning)' : 'var(--negative)';
+
+                    // 检查时间是否相同,如果不同计算同步差价
+                    const gfexTime = gfexData.time ? gfexData.time.substring(0, 16) : '';
+                    const nymexTime = nymexData.time ? nymexData.time.substring(0, 16) : '';
+
+                    if (gfexTime && nymexTime && gfexTime !== nymexTime) {
+                        // 使用pairs API中的CME价格(与GFEX同步的时间点)
+                        if (gfexData.syncCmeUsd) {
+                            const syncNymexCny = gfexData.syncCmeUsd * HEADER_EXCHANGE_RATE / HEADER_OZ_TO_GRAM;
+                            const syncSpreadPct = ((gfexData.price - syncNymexCny) / syncNymexCny * 100).toFixed(2);
+                            document.getElementById('header-spread-sync').style.display = 'block';
+                            document.getElementById('header-spread-sync-value').textContent =
+                                (syncSpreadPct >= 0 ? '+' : '') + syncSpreadPct + '%';
+                        } else {
+                            document.getElementById('header-spread-sync').style.display = 'none';
+                        }
+                    } else {
+                        document.getElementById('header-spread-sync').style.display = 'none';
+                    }
+                }
+
+            } catch (error) {
+                console.error('更新顶部价格失败:', error);
+            }
+        }
+
+        // 更新涨跌幅显示
+        function updatePriceChange(elementId, currentPrice, openPrice) {
+            const el = document.getElementById(elementId);
+            if (!el || !currentPrice || !openPrice) {
+                if (el) el.textContent = '--';
+                return;
+            }
+
+            const changePct = ((currentPrice - openPrice) / openPrice * 100).toFixed(2);
+            const isPositive = changePct >= 0;
+
+            el.textContent = (isPositive ? '+' : '') + changePct + '%';
+            el.style.color = isPositive ? 'var(--positive)' : 'var(--negative)';
+        }
+
+        // 页面加载时初始化顶部价格
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(updateHeaderPrices, 500);  // 延迟加载确保API可用
+        });
+
+        // 刷新数据 - 仅刷新前端显示，从现有 JSON 文件重新加载
         async function refreshData() {
             const btn = document.querySelector('.refresh-btn');
             if (btn) {
-                btn.textContent = '⏳ 正在采集最新数据...';
+                btn.textContent = '🔄 正在刷新...';
                 btn.disabled = true;
             }
 
-            try {
-                // 1. 调用API触发后台数据更新
-                const updateRes = await fetch('/api/refresh-data', { method: 'POST' });
-                if (!updateRes.ok) throw new Error('数据更新请求失败');
 
-                // 2. 也是重载页面
-                if (btn) btn.textContent = '✅ 数据已更新';
-                setTimeout(() => window.location.reload(true), 500);
+            try {
+                // 1. 触发后端数据采集 (强制刷新)
+                if (btn) btn.textContent = '⏳ 正在采集最新数据...';
+
+                try {
+                    const updateRes = await fetch('/api/refresh-data', { method: 'POST' });
+                    if (!updateRes.ok) {
+                        console.warn('后端数据采集失败，尝试仅刷新前端显示');
+                    }
+                } catch (apiErr) {
+                    console.warn('调用采集接口超时或失败:', apiErr);
+                }
+
+                // 2. 重新加载所有数据（从现有的 JSON 文件和 API）
+                // 加载价格数据 (prices_data.json) - 更新价格卡片
+                if (typeof loadLatestPrices === 'function') {
+                    await loadLatestPrices();
+                }
+
+                // 刷新价差排行榜图表
+                if (typeof loadSpreadChart === 'function') {
+                    await loadSpreadChart();
+                }
+
+                // 刷新顶部价格显示
+                if (typeof updateHeaderPrices === 'function') {
+                    await updateHeaderPrices();
+                }
+
+                // 刷新计算器配对数据
+                if (typeof initCalculatorPairs === 'function') {
+                    await initCalculatorPairs();
+                }
+
+                if (btn) {
+                    btn.textContent = '✅ 已刷新';
+                    setTimeout(() => {
+                        btn.textContent = '🔄 刷新数据';
+                        btn.disabled = false;
+                    }, 1500);
+                }
 
             } catch (error) {
                 console.error('刷新失败:', error);
-                alert('数据刷新失败: ' + error.message);
                 if (btn) {
                     btn.textContent = '🔄 刷新数据';
                     btn.disabled = false;
@@ -1641,6 +1979,9 @@
 
             const statusEl = document.getElementById('market-status');
             const dotEl = document.querySelector('.status-dot');
+
+            // 如果元素不存在，直接返回
+            if (!statusEl || !dotEl) return;
 
             // 周末
             if (day === 0 || day === 6) {
@@ -1688,9 +2029,12 @@
                         if (targetPair.current) {
                             marketData.gfex.PT2606 = targetPair.current.gfex_price;
                             marketData.intl.XPT = targetPair.current.cme_usd;  // 动态更新国际价格
-                            document.getElementById('pt-gfex').textContent = targetPair.current.gfex_price.toFixed(2);
-                            document.getElementById('pt-intl-usd').textContent = targetPair.current.cme_usd.toFixed(2);
-                            document.getElementById('pt-intl').textContent = targetPair.current.cme_cny.toFixed(2);
+                            const ptGfexEl = document.getElementById('pt-gfex');
+                            const ptIntlUsdEl = document.getElementById('pt-intl-usd');
+                            const ptIntlEl = document.getElementById('pt-intl');
+                            if (ptGfexEl) ptGfexEl.textContent = targetPair.current.gfex_price.toFixed(2);
+                            if (ptIntlUsdEl) ptIntlUsdEl.textContent = targetPair.current.cme_usd.toFixed(2);
+                            if (ptIntlEl) ptIntlEl.textContent = targetPair.current.cme_cny.toFixed(2);
                         }
                     }
                 }
@@ -1711,9 +2055,12 @@
                         if (targetPdPair.current) {
                             marketData.gfex.PD2606 = targetPdPair.current.gfex_price;
                             marketData.intl.XPD = targetPdPair.current.cme_usd;  // 动态更新国际价格
-                            document.getElementById('pd-gfex').textContent = targetPdPair.current.gfex_price.toFixed(2);
-                            document.getElementById('pd-intl-usd').textContent = targetPdPair.current.cme_usd.toFixed(2);
-                            document.getElementById('pd-intl').textContent = targetPdPair.current.cme_cny.toFixed(2);
+                            const pdGfexEl = document.getElementById('pd-gfex');
+                            const pdIntlUsdEl = document.getElementById('pd-intl-usd');
+                            const pdIntlEl = document.getElementById('pd-intl');
+                            if (pdGfexEl) pdGfexEl.textContent = targetPdPair.current.gfex_price.toFixed(2);
+                            if (pdIntlUsdEl) pdIntlUsdEl.textContent = targetPdPair.current.cme_usd.toFixed(2);
+                            if (pdIntlEl) pdIntlEl.textContent = targetPdPair.current.cme_cny.toFixed(2);
                         }
                     }
                 }
@@ -1749,8 +2096,10 @@
             // 更新时间
             const now = new Date();
             const timeStr = now.toLocaleString('zh-CN');
-            document.getElementById('last-update').textContent = timeStr;
-            document.getElementById('data-time').textContent = timeStr;
+            const lastUpdateEl = document.getElementById('last-update');
+            const dataTimeEl = document.getElementById('data-time');
+            if (lastUpdateEl) lastUpdateEl.textContent = timeStr;
+            if (dataTimeEl) dataTimeEl.textContent = timeStr;
 
             // 更新卡片上的时间显示 (手动更新时显示日期+时间)
             const dateStr = now.getFullYear() + '.' + String(now.getMonth() + 1).padStart(2, '0') + '.' + String(now.getDate()).padStart(2, '0');
@@ -1959,12 +2308,17 @@
 
         // 计算套利方案
         function calculateArbitrage() {
-            // 获取输入值
+            // 获取输入值 (添加null检查)
             // 获取交易参数
-            const lots = parseInt(document.getElementById('calc-lots').value) || 1;
-            const convergence = parseFloat(document.getElementById('calc-convergence').value) || 0.5;
-            const period = parseInt(document.getElementById('calc-period').value) || 30;
-            const hedgePlatform = document.getElementById('calc-hedge-platform').value;
+            const lotsEl = document.getElementById('calc-lots');
+            const convergenceEl = document.getElementById('calc-convergence');
+            const periodEl = document.getElementById('calc-period');
+            const hedgePlatformEl = document.getElementById('calc-hedge-platform');
+
+            const lots = lotsEl ? (parseInt(lotsEl.value) || 1) : 1;
+            const convergence = convergenceEl ? (parseFloat(convergenceEl.value) || 0.5) : 0.5;
+            const period = periodEl ? (parseInt(periodEl.value) || 30) : 30;
+            const hedgePlatform = hedgePlatformEl ? hedgePlatformEl.value : 'cme';
 
             // 市场数据
             const OZ_TO_GRAM = 31.1035;
@@ -2514,17 +2868,25 @@
 
                 console.log('加载保存的数据:', data);
 
-                // 填充到输入框
-                if (data.cme?.pt) document.getElementById('cme-pl-price').value = data.cme.pt;
-                if (data.cme?.pd) document.getElementById('cme-pa-price').value = data.cme.pd;
-                if (data.bybit?.pt) document.getElementById('spot-pl-price').value = data.bybit.pt;
-                if (data.bybit?.pd) document.getElementById('spot-pa-price').value = data.bybit.pd;
-                if (data.gfex?.pt) document.getElementById('gfex-pl-price').value = data.gfex.pt;
-                if (data.gfex?.pd) document.getElementById('gfex-pa-price').value = data.gfex.pd;
+                // 填充到输入框 (添加null检查)
+                const cmePlEl = document.getElementById('cme-pl-price');
+                const cmePaEl = document.getElementById('cme-pa-price');
+                const spotPlEl = document.getElementById('spot-pl-price');
+                const spotPaEl = document.getElementById('spot-pa-price');
+                const gfexPlEl = document.getElementById('gfex-pl-price');
+                const gfexPaEl = document.getElementById('gfex-pa-price');
+                const dataTimeEl = document.getElementById('data-time');
+
+                if (data.cme?.pt && cmePlEl) cmePlEl.value = data.cme.pt;
+                if (data.cme?.pd && cmePaEl) cmePaEl.value = data.cme.pd;
+                if (data.bybit?.pt && spotPlEl) spotPlEl.value = data.bybit.pt;
+                if (data.bybit?.pd && spotPaEl) spotPaEl.value = data.bybit.pd;
+                if (data.gfex?.pt && gfexPlEl) gfexPlEl.value = data.gfex.pt;
+                if (data.gfex?.pd && gfexPaEl) gfexPaEl.value = data.gfex.pd;
 
                 // 显示保存时间 (完整日期+时间格式)
-                if (data.save_time) {
-                    document.getElementById('data-time').textContent = data.save_time + ' (已保存)';
+                if (data.save_time && dataTimeEl) {
+                    dataTimeEl.textContent = data.save_time + ' (已保存)';
                     // save_time 格式: "2025/12/26 11:07:30" -> "2025.12.26 11:07 手动"
                     const parts = data.save_time.split(' ');
                     const datePart = parts[0].replace(/\//g, '.');
@@ -3478,35 +3840,84 @@
 
         async function loadLatestPrices() {
             try {
-                const response = await fetch('prices_data.json?t=' + Date.now());
-                if (!response.ok) {
-                    console.log('prices_data.json not found, using chart data');
-                    return;
+                // 1. 获取基础数据 (prices_data.json)
+                let data = null;
+                try {
+                    const response = await fetch('prices_data.json?t=' + Date.now());
+                    if (response.ok) {
+                        data = await response.json();
+                    }
+                } catch (e) {
+                    console.warn('prices_data.json load failed', e);
                 }
-                const data = await response.json();
+
+                if (!data) {
+                    console.log('Using fallback data structure');
+                    data = { gfex: {}, cme: {}, spread: {} };
+                }
+
+                // 2. 尝试获取实时API数据覆盖旧数据 (关键修复：从API获取不再依赖静态文件)
+                try {
+                    const cmeRes = await fetch('/api/cme-latest');
+                    if (cmeRes.ok) {
+                        const cmeApiData = await cmeRes.json();
+                        // 尝试更新数据，优先匹配 data 中的合约信息，如果不知道合约，默认更新 PLJ2026 和 PAH2026 (当前主力)
+                        // 获取当前选中的合约 (尝试从Header获取，如果没有则默认)
+                        const headerContractEl = document.getElementById('header-contract-select');
+                        const selectedCmeContract = headerContractEl ? headerContractEl.value : 'PLJ2026';
+
+                        // 更新CME数据
+                        if (cmeApiData[selectedCmeContract]) {
+                            // 更新由 prices_data.json 提供的字段 (注意价格单位差异，API是USD/oz)
+                            // prices_data.json 中的 cme.pt_price 通常是 USD
+                            data.cme.pt_price = cmeApiData[selectedCmeContract].price;
+                            data.cme.pt_time = cmeApiData[selectedCmeContract].datetime.split(' ')[1];
+                        }
+
+                        // 同时也尝试更新其他主力合约，以防 Header 选择的不是铂金
+                        if (cmeApiData['PLJ2026']) {
+                            data.cme.pt_price = cmeApiData['PLJ2026'].price;
+                            data.cme.pt_time = cmeApiData['PLJ2026'].datetime.split(' ')[1];
+                        }
+
+                        // 钯金 (假设主力是 PAM2026 或 PAH2026)
+                        if (cmeApiData['PAH2026']) {
+                            data.cme.pd_price = cmeApiData['PAH2026'].price;
+                            data.cme.pd_time = cmeApiData['PAH2026'].datetime.split(' ')[1];
+                        } else if (cmeApiData['PAM2026']) {
+                            data.cme.pd_price = cmeApiData['PAM2026'].price;
+                            data.cme.pd_time = cmeApiData['PAM2026'].datetime.split(' ')[1];
+                        }
+                    }
+                } catch (e) {
+                    console.error('获取CME实时API数据失败', e);
+                }
 
                 // 存储到全局变量，供计算器使用
                 pricesData = data;
 
                 // 更新时间显示
-                document.getElementById('data-time').textContent = data.update_time || '自动更新中...';
+                const now = new Date();
+                const timeStr = now.toLocaleString('zh-CN');
+                document.getElementById('data-time').textContent = timeStr; // 更新为当前时间，表示已执行刷新
 
                 // 更新汇率
                 if (data.exchange_rate) {
-                    document.getElementById('exchange-rate').textContent = 'USD/CNY = ' + data.exchange_rate.toFixed(2);
+                    const exEl = document.getElementById('exchange-rate');
+                    if (exEl) exEl.textContent = 'USD/CNY = ' + data.exchange_rate.toFixed(2);
                 }
 
                 // 更新价格卡片
+                // 注意：这里需要检查 gfex 和 cme 对象是否存在，防止报错
                 if (data.gfex) {
                     const ptGfexEl = document.getElementById('pt-gfex');
                     const pdGfexEl = document.getElementById('pd-gfex');
                     const ptUpdateTimeEl = document.getElementById('pt-update-time');
                     const pdUpdateTimeEl = document.getElementById('pd-update-time');
 
-                    if (ptGfexEl) ptGfexEl.textContent = data.gfex.pt_price.toFixed(2);
-                    if (pdGfexEl) pdGfexEl.textContent = data.gfex.pd_price.toFixed(2);
+                    if (ptGfexEl && data.gfex.pt_price) ptGfexEl.textContent = data.gfex.pt_price.toFixed(2);
+                    if (pdGfexEl && data.gfex.pd_price) pdGfexEl.textContent = data.gfex.pd_price.toFixed(2);
 
-                    // 使用广期所实际行情时间（而非脚本更新时间）
                     const ptTime = data.gfex.pt_time ? '@' + data.gfex.pt_time : '';
                     const pdTime = data.gfex.pd_time ? '@' + data.gfex.pd_time : '';
                     if (ptUpdateTimeEl) ptUpdateTimeEl.textContent = ptTime;
@@ -3514,69 +3925,58 @@
                 }
 
                 if (data.cme) {
-                    const ptIntlEl = document.getElementById('pt-intl');
-                    const pdIntlEl = document.getElementById('pd-intl');
+                    // 更新 CME 价格 (注意: 这里 data.cme.pt_price 是我们在上面从 API 覆盖过的最新值)
+                    const ptIntlEl = document.getElementById('pt-intl'); // 这是一个显示的 CNY 价格
+                    const pdIntlEl = document.getElementById('pd-intl'); // 这是一个显示的 CNY 价格
                     const ptIntlUsdEl = document.getElementById('pt-intl-usd');
                     const pdIntlUsdEl = document.getElementById('pd-intl-usd');
-                    const ptCmeContractEl = document.getElementById('pt-cme-contract');
-                    const pdCmeContractEl = document.getElementById('pd-cme-contract');
                     const ptCmeTimeEl = document.getElementById('pt-cme-time');
                     const pdCmeTimeEl = document.getElementById('pd-cme-time');
 
-                    // 显示CME USD价格和时间
-                    if (ptIntlUsdEl && data.cme.pt_usd) {
-                        ptIntlUsdEl.innerHTML = data.cme.pt_usd.toFixed(2) +
-                            ' <span id="pt-cme-time" style="font-size:0.6rem;color:var(--text-muted);">@' + (data.cme.pt_time || '') + '</span>';
-                    }
-                    if (pdIntlUsdEl && data.cme.pd_usd) {
-                        pdIntlUsdEl.innerHTML = data.cme.pd_usd.toFixed(2) +
-                            ' <span id="pd-cme-time" style="font-size:0.6rem;color:var(--text-muted);">@' + (data.cme.pd_time || '') + '</span>';
+                    // 需要重新计算 CNY 价格，因为 USD 价格变了
+                    const rate = data.exchange_rate || 7.04;
+                    const ozToGram = 31.1035;
+
+
+                    if (data.cme.pt_price) {
+                        const ptCny = (data.cme.pt_price * rate) / ozToGram;
+                        if (ptIntlUsdEl) {
+                            ptIntlUsdEl.innerHTML = data.cme.pt_price.toFixed(2) +
+                                ' <span id="pt-cme-time" style="font-size:0.6rem;color:var(--text-muted);">@' + (data.cme.pt_time || '') + '</span>';
+                        }
+                        if (ptIntlEl) ptIntlEl.textContent = ptCny.toFixed(2);
+                        // if (ptCmeTimeEl) ptCmeTimeEl.textContent = data.cme.pt_time ? '@' + data.cme.pt_time : ''; // Included in innerHTML above
                     }
 
-                    // 显示CME CNY折算价格
-                    if (ptIntlEl && data.cme.pt_cny) {
-                        ptIntlEl.textContent = data.cme.pt_cny.toFixed(2);
-                    }
-                    if (pdIntlEl && data.cme.pd_cny) {
-                        pdIntlEl.textContent = data.cme.pd_cny.toFixed(2);
+                    if (data.cme.pd_price) {
+                        const pdCny = (data.cme.pd_price * rate) / ozToGram;
+                        if (pdIntlUsdEl) {
+                            pdIntlUsdEl.innerHTML = data.cme.pd_price.toFixed(2) +
+                                ' <span id="pd-cme-time" style="font-size:0.6rem;color:var(--text-muted);">@' + (data.cme.pd_time || '') + '</span>';
+                        }
+                        if (pdIntlEl) pdIntlEl.textContent = pdCny.toFixed(2);
+                        // if (pdCmeTimeEl) pdCmeTimeEl.textContent = data.cme.pd_time ? '@' + data.cme.pd_time : '';
                     }
 
                     // 显示合约信息
+                    const ptCmeContractEl = document.getElementById('pt-cme-contract');
+                    const pdCmeContractEl = document.getElementById('pd-cme-contract');
                     if (ptCmeContractEl && data.cme.pt_contract) {
                         ptCmeContractEl.textContent = data.cme.pt_contract;
                     }
                     if (pdCmeContractEl && data.cme.pd_contract) {
                         pdCmeContractEl.textContent = data.cme.pd_contract;
                     }
-                }
 
-                if (data.spread) {
-                    const ptSpreadEl = document.getElementById('pt-spread');
-                    const ptSpreadPctEl = document.getElementById('pt-spread-pct');
-                    const pdSpreadEl = document.getElementById('pd-spread');
-                    const pdSpreadPctEl = document.getElementById('pd-spread-pct');
 
-                    if (ptSpreadEl) ptSpreadEl.textContent = (data.spread.pt_spread >= 0 ? '+' : '') + data.spread.pt_spread.toFixed(2);
-                    if (ptSpreadPctEl) ptSpreadPctEl.textContent = (data.spread.pt_spread_pct >= 0 ? '+' : '') + data.spread.pt_spread_pct.toFixed(2) + '%';
-                    if (pdSpreadEl) pdSpreadEl.textContent = (data.spread.pd_spread >= 0 ? '+' : '') + data.spread.pd_spread.toFixed(2);
-                    if (pdSpreadPctEl) pdSpreadPctEl.textContent = (data.spread.pd_spread_pct >= 0 ? '+' : '') + data.spread.pd_spread_pct.toFixed(2) + '%';
                 }
-
-                // 更新套利计算器的品种标签显示价格和时间
-                const arbPtPriceEl = document.getElementById('arb-pt-price');
-                const arbPdPriceEl = document.getElementById('arb-pd-price');
-                if (arbPtPriceEl && data.gfex && data.gfex.pt_price && data.gfex.pt_time) {
-                    arbPtPriceEl.textContent = '¥' + data.gfex.pt_price.toFixed(2) + ' @' + data.gfex.pt_time;
-                }
-                if (arbPdPriceEl && data.gfex && data.gfex.pd_price && data.gfex.pd_time) {
-                    arbPdPriceEl.textContent = '¥' + data.gfex.pd_price.toFixed(2) + ' @' + data.gfex.pd_time;
-                }
-
-                console.log('价格数据已自动更新:', data.update_time);
+                console.log('价格数据已自动更新:', new Date().toLocaleTimeString());
             } catch (error) {
-                console.log('自动加载价格数据:', error.message);
+                console.error('自动加载价格数据失败:', error);
             }
         }
+
+
 
         // ========== 警报配置 ==========
         async function loadAlertConfig() {
@@ -3646,34 +4046,8 @@
             }
         }
 
-        // 刷新数据按钮
-        // 刷新数据按钮
-        // 刷新数据按钮
-        async function refreshData() {
-            const btn = document.querySelector('.refresh-btn');
-            if (btn) {
-                btn.textContent = '⏳ 正在采集最新数据...';
-                btn.disabled = true;
-            }
+        // refreshData 函数已在上方定义，此处不再重复
 
-            try {
-                // 1. 调用API触发后台数据更新
-                const updateRes = await fetch('/api/refresh-data', { method: 'POST' });
-                if (!updateRes.ok) throw new Error('数据更新请求失败');
-
-                // 2. 更新完后重载页面以显示新数据
-                if (btn) btn.textContent = '✅ 数据已更新';
-                setTimeout(() => window.location.reload(true), 500);
-
-            } catch (error) {
-                console.error('刷新失败:', error);
-                alert('数据刷新失败: ' + error.message);
-                if (btn) {
-                    btn.textContent = '🔄 刷新数据';
-                    btn.disabled = false;
-                }
-            }
-        }
 
         // 页面加载时初始化
         (async function init() {

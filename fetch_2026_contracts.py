@@ -61,7 +61,7 @@ def init_contracts_table():
     
     conn.commit()
     conn.close()
-    print("✓ 合约数据表初始化完成")
+    print("[OK] 合约数据表初始化完成")
 
 def fetch_and_save_gfex(contracts):
     """获取并保存广期所铂金合约数据"""
@@ -73,7 +73,7 @@ def fetch_and_save_gfex(contracts):
         try:
             df = ak.futures_zh_minute_sina(symbol=symbol, period='60')
             if df is None or len(df) == 0:
-                print(f"  ✗ {symbol} 无数据")
+                print(f"  [X] {symbol} 无数据")
                 continue
             
             df['datetime'] = pd.to_datetime(df['datetime'])
@@ -96,9 +96,9 @@ def fetch_and_save_gfex(contracts):
                 count += 1
             
             conn.commit()
-            print(f"  ✓ {symbol}: 保存 {count} 条小时数据")
+            print(f"  [OK] {symbol}: 保存 {count} 条小时数据")
         except Exception as e:
-            print(f"  ✗ {symbol} 获取失败: {e}")
+            print(f"  [X] {symbol} 获取失败: {e}")
     
     conn.close()
 
@@ -114,7 +114,7 @@ def fetch_and_save_cme(tv, contracts):
             df = tv.get_hist(symbol=symbol, exchange='NYMEX', 
                             interval=Interval.in_1_minute, n_bars=5000)
             if df is None or len(df) == 0:
-                print(f"  ✗ {symbol} 无数据")
+                print(f"  [X] {symbol} 无数据")
                 continue
             
             df = df.sort_index()
@@ -136,9 +136,9 @@ def fetch_and_save_cme(tv, contracts):
                 count += 1
             
             conn.commit()
-            print(f"  ✓ {symbol}: 保存 {count} 条分钟数据")
+            print(f"  [OK] {symbol}: 保存 {count} 条分钟数据")
         except Exception as e:
-            print(f"  ✗ {symbol} 获取失败: {e}")
+            print(f"  [X] {symbol} 获取失败: {e}")
     
     conn.close()
 
@@ -148,7 +148,7 @@ def fetch_realtime_with_scraper(contracts):
     try:
         from tv_scraper import TradingViewScraper
     except ImportError:
-        print("  ⚠ tv_scraper 模块未找到，跳过实时爬取")
+        print("  [!] tv_scraper 模块未找到，跳过实时爬取")
         return {}
     
     conn = sqlite3.connect(DB_FILE)
@@ -169,16 +169,16 @@ def fetch_realtime_with_scraper(contracts):
                     time_str = data_time.strftime('%Y-%m-%d %H:%M')
                 else:
                     time_str = datetime.now().strftime('%Y-%m-%d %H:%M')
-                    print(f"    ⚠ 未获取到数据时间，使用当前时间: {time_str}")
+                    print(f"    [!] 未获取到数据时间，使用当前时间: {time_str}")
                 
                 cursor.execute('''
                     INSERT OR REPLACE INTO cme_platinum_contracts 
                     (contract, datetime, open, high, low, close, volume)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
                 ''', (symbol, time_str, price, price, price, price, 0))
-                print(f"    ✓ {symbol}: ${price} @ {time_str} (已保存)")
+                print(f"    [OK] {symbol}: ${price} @ {time_str} (已保存)")
             else:
-                print(f"    ✗ {symbol}: 获取失败")
+                print(f"    [X] {symbol}: 获取失败")
         
         conn.commit()
     finally:
@@ -252,7 +252,7 @@ def main():
     # 显示统计
     show_summary()
     
-    print("\n✓ 数据获取完成!")
+    print("\n[OK] 数据获取完成!")
 
 if __name__ == "__main__":
     main()

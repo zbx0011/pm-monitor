@@ -87,13 +87,20 @@ def calculate_spread(gfex_df, cme_df, gfex_symbol, cme_symbol):
         gfex_price = float(row['close'])
         
         # 查找CME同一小时的数据 (允许±30分钟匹配)
-        time_diff = abs((cme_df.index - idx).total_seconds())
-        matches = cme_df[time_diff <= 1800]
+        # 精确匹配：找出时间差最小的一条
+        # 使用 Series 计算以保留索引
+        diffs = pd.Series(np.abs((cme_df.index - idx).total_seconds()), index=cme_df.index)
         
-        if len(matches) == 0:
+        # 只保留 30 分钟内的数据
+        valid_matches = diffs[diffs <= 1800]
+        
+        if len(valid_matches) == 0:
             continue
+            
+        # 找到时间差最小的那个索引
+        best_match_idx = valid_matches.idxmin()
+        cme_row = cme_df.loc[best_match_idx]
         
-        cme_row = matches.iloc[0]
         cme_usd = float(cme_row['close'])
         cme_cny = cme_usd * RATE / OZ_TO_GRAM
         spread = gfex_price - cme_cny

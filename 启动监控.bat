@@ -6,9 +6,10 @@ echo ========================================
 cd /d "e:\项目\币圈等监控系统"
 
 echo 启动API服务器与自动更新服务 (每2分钟)...
-start python price_api_server.py
+start "PM Monitor Server" python price_api_server.py
 
-timeout /t 3 /nobreak > nul
+echo 等待服务启动...
+timeout /t 5 /nobreak > nul
 echo 打开监控页面...
 start http://localhost:8080/precious_metals_monitor.html
 

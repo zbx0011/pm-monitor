@@ -52,7 +52,7 @@ class TradingViewScraper:
             if not os.path.exists(user_data_dir):
                 os.makedirs(user_data_dir)
                 print(f"    创建 Chrome 配置目录: {user_data_dir}")
-                print("    ⚠ 首次运行需要手动登录 TradingView！")
+                print("    [!] 首次运行需要手动登录 TradingView！")
             chrome_options.add_argument(f"--user-data-dir={user_data_dir}")
             print(f"    使用独立 Chrome 配置: {user_data_dir}")
         else:
@@ -110,7 +110,7 @@ class TradingViewScraper:
                     price = float(match.group(1).replace(',', ''))
                     # 验证价格在合理范围内（铂金/钯金应该在 500-5000 之间）
                     if 500 <= price <= 5000:
-                        print(f"    ✓ 价格: ${price}")
+                        print(f"    [OK] 价格: ${price}")
                         break
                     else:
                         price = None  # 重置，可能匹配到了错误的价格
@@ -151,22 +151,22 @@ class TradingViewScraper:
                     result = self.driver.execute_script(js_code)
                     if result:
                         price = float(result)
-                        print(f"    ✓ 价格: ${price}")
+                        print(f"    [OK] 价格: ${price}")
                 except Exception as e:
                     print(f"    DOM 查找失败: {e}")
             
             # 数据时间 - 用户已订阅实时数据，使用当前时间
             from datetime import datetime
             data_time = datetime.now()
-            print(f"    ✓ 数据时间: {data_time.strftime('%Y-%m-%d %H:%M')} (实时)")
+            print(f"    [OK] 数据时间: {data_time.strftime('%Y-%m-%d %H:%M')} (实时)")
             
             if price is None:
-                print(f"    ✗ 未能获取价格")
+                print(f"    [X] 未能获取价格")
                 
             return price, data_time
             
         except Exception as e:
-            print(f"    ✗ 错误: {e}")
+            print(f"    [X] 错误: {e}")
             return None, None
     
     def get_price(self, symbol, exchange='NYMEX'):

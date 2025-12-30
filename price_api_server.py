@@ -6,6 +6,7 @@
 """
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 import json
+import sqlite3
 import akshare as ak
 from datetime import datetime
 import pandas as pd
@@ -97,6 +98,10 @@ class PriceAPIHandler(SimpleHTTPRequestHandler):
             self.send_pairs_data('palladium')
         elif self.path.startswith('/api/pair-history'):
             self.send_pair_history()
+        elif self.path == '/api/cme-latest':
+            self.send_cme_latest()
+        elif self.path == '/api/gfex-latest':
+            self.send_gfex_latest()
         elif self.path == '/api/alert-config':
             self.send_alert_config()
         else:
@@ -307,6 +312,100 @@ class PriceAPIHandler(SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps({'error': str(e)}).encode('utf-8'))
 
+    def send_cme_latest(self):
+        """返回所有CME合约的最新价格和今日开盘价"""
+        try:
+            conn = sqlite3.connect('precious_metals.db')
+            cursor = conn.cursor()
+            
+            result = {}
+            
+            # 获取每个合约的最新数据
+            for contract in ['PLF2026', 'PLJ2026', 'PLN2026', 'PLV2026']:
+                # 最新价格
+                cursor.execute('''
+                    SELECT close, datetime FROM cme_platinum_contracts 
+                    WHERE contract = ? ORDER BY datetime DESC LIMIT 1
+                ''', (contract,))
+                latest = cursor.fetchone()
+                
+                # 今日开盘价 (今天第一条数据)
+                today = datetime.now().strftime('%Y-%m-%d')
+                cursor.execute('''
+                    SELECT close FROM cme_platinum_contracts 
+                    WHERE contract = ? AND datetime LIKE ? 
+                    ORDER BY datetime ASC LIMIT 1
+                ''', (contract, f'{today}%'))
+                open_row = cursor.fetchone()
+                
+                if latest:
+                    result[contract] = {
+                        'price': latest[0],
+                        'datetime': latest[1],
+                        'open_price': open_row[0] if open_row else latest[0]
+                    }
+            
+            conn.close()
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps(result, ensure_ascii=False).encode('utf-8'))
+            
+        except Exception as e:
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'error': str(e)}).encode('utf-8'))
+
+    def send_gfex_latest(self):
+        """返回所有广期所合约的最新价格和今日开盘价"""
+        try:
+            conn = sqlite3.connect('precious_metals.db')
+            cursor = conn.cursor()
+            
+            result = {}
+            
+            # 获取每个广期所合约的最新数据
+            for contract in ['PT2606', 'PT2610', 'PD2606', 'PD2610']:
+                # 最新价格
+                cursor.execute('''
+                    SELECT close, datetime FROM gfex_platinum_contracts 
+                    WHERE contract = ? ORDER BY datetime DESC LIMIT 1
+                ''', (contract,))
+                latest = cursor.fetchone()
+                
+                # 今日开盘价 (今天第一条数据的 close)
+                today = datetime.now().strftime('%Y-%m-%d')
+                cursor.execute('''
+                    SELECT close FROM gfex_platinum_contracts 
+                    WHERE contract = ? AND datetime LIKE ? 
+                    ORDER BY datetime ASC LIMIT 1
+                ''', (contract, f'{today}%'))
+                open_row = cursor.fetchone()
+                
+                if latest:
+                    result[contract] = {
+                        'price': latest[0],
+                        'datetime': latest[1],
+                        'open_price': open_row[0] if open_row else latest[0]
+                    }
+            
+            conn.close()
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps(result, ensure_ascii=False).encode('utf-8'))
+            
+        except Exception as e:
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'error': str(e)}).encode('utf-8'))
+
 
 def load_saved_prices():
     """加载保存的手动价格数据"""
@@ -469,9 +568,10 @@ if __name__ == '__main__':
     print("=" * 50)
     print("=" * 50)
     
-    # 1. 启动时立即执行一次数据更新 (满足用户要求: 开启项目自动获取数据)
-    print("启动时立即执行首次数据更新...")
-    run_data_sync()
+    # 1. 启动时立即执行一次数据更新 (使用独立线程，避免阻塞服务器启动)
+    print("启动后台数据更新线程...")
+    initial_sync_thread = threading.Thread(target=run_data_sync, daemon=True)
+    initial_sync_thread.start()
 
     # 2. 启动自动刷新线程 (每2分钟=120秒)
     refresh_thread = threading.Thread(target=auto_refresh_scheduler, args=(120,), daemon=True)

@@ -1,5 +1,5 @@
 {
-  "enabled": true,
+  "enabled": false,
   "thresholds": {
     "platinum": {
       "min": 15,
