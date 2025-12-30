@@ -895,6 +895,19 @@
                     </div>
                 </div>
 
+                <!-- 自动刷新间隔选择器 -->
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="color: var(--text-muted); font-size: 0.75rem;">自动更新:</span>
+                    <select id="refresh-interval-select" onchange="setRefreshInterval(this.value)"
+                        style="padding: 6px 10px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); font-size: 0.8rem; cursor: pointer;">
+                        <option value="120">2分钟</option>
+                        <option value="300">5分钟</option>
+                        <option value="600">10分钟</option>
+                        <option value="1800">30分钟</option>
+                        <option value="3600">60分钟</option>
+                    </select>
+                </div>
+
                 <button class="refresh-btn" onclick="refreshData()">
                     🔄 刷新
                 </button>
@@ -2716,6 +2729,49 @@
             }
         }
 
+        // 设置后端刷新间隔
+        async function setRefreshInterval(seconds) {
+            try {
+                const response = await fetch('/api/refresh-interval', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ interval: parseInt(seconds) })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    console.log('刷新间隔已设置:', result.message);
+                    // 简短提示
+                    const btn = document.querySelector('.refresh-btn');
+                    const originalText = btn.textContent;
+                    btn.textContent = '✅ ' + (seconds / 60) + '分钟';
+                    setTimeout(() => { btn.textContent = originalText; }, 1500);
+                }
+            } catch (e) {
+                console.error('设置刷新间隔失败:', e);
+            }
+        }
+
+        // 加载当前刷新间隔
+        async function loadRefreshInterval() {
+            try {
+                const response = await fetch('/api/refresh-interval');
+                const data = await response.json();
+                const select = document.getElementById('refresh-interval-select');
+                if (select && data.interval) {
+                    // 尝试匹配选项
+                    const options = select.options;
+                    for (let i = 0; i < options.length; i++) {
+                        if (parseInt(options[i].value) === data.interval) {
+                            select.selectedIndex = i;
+                            break;
+                        }
+                    }
+                }
+            } catch (e) {
+                console.log('加载刷新间隔失败:', e);
+            }
+        }
+
         // 更新CME比例滑块显示
         function updateCmeRatioDisplay() {
             const slider = document.getElementById('cme-ratio-slider');
@@ -2807,6 +2863,9 @@
 
                 // 更新市场状态
                 updateMarketStatus();
+
+                // 加载当前刷新间隔设置
+                loadRefreshInterval();
             }, 500);
         });
 

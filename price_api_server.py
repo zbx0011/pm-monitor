@@ -4,7 +4,7 @@
 支持手动数据持久化存储
 支持从数据库读取配对数据
 """
-from http.server import HTTPServer, SimpleHTTPRequestHandler
+from http.server import HTTPServer, SimpleHTTPRequestHandler, ThreadingHTTPServer
 import json
 import sqlite3
 import akshare as ak
@@ -18,8 +18,10 @@ import threading
 import time
 
 # 手动数据存储文件
-# 手动数据存储文件
 MANUAL_DATA_FILE = 'manual_prices.json'
+
+# 全局刷新间隔（秒），默认2分钟
+REFRESH_INTERVAL = 120
 
 def run_data_sync():
     """执行数据同步（Windows运行脚本，Linux拉取代码）"""
@@ -73,13 +75,16 @@ def run_data_sync():
         print(f"[{datetime.now().strftime('%H:%M:%S')}] 同步失败: {e}")
         return False, str(e)
 
-def auto_refresh_scheduler(interval=600):
-    """后台定时刷新任务"""
-    print(f"启动自动刷新调度器，间隔 {interval} 秒")
+def auto_refresh_scheduler():
+    """后台定时刷新任务，使用全局REFRESH_INTERVAL"""
+    global REFRESH_INTERVAL
+    print(f"启动自动刷新调度器，初始间隔 {REFRESH_INTERVAL} 秒")
     while True:
         try:
-            time.sleep(interval)
-            print(f"\n[{datetime.now().strftime('%H:%M:%S')}] 触发定时自动更新...")
+            # 使用动态间隔，每次循环检查当前设置
+            current_interval = REFRESH_INTERVAL
+            time.sleep(current_interval)
+            print(f"\n[{datetime.now().strftime('%H:%M:%S')}] 触发定时自动更新 (间隔{current_interval}秒)...")
             run_data_sync()
         except Exception as e:
             print(f"定时更新出错: {e}")
@@ -104,6 +109,8 @@ class PriceAPIHandler(SimpleHTTPRequestHandler):
             self.send_gfex_latest()
         elif self.path == '/api/alert-config':
             self.send_alert_config()
+        elif self.path == '/api/refresh-interval':
+            self.send_refresh_interval()
         else:
             super().do_GET()
     
@@ -114,6 +121,8 @@ class PriceAPIHandler(SimpleHTTPRequestHandler):
             self.trigger_data_refresh()
         elif self.path == '/api/alert-config':
             self.save_alert_config()
+        elif self.path == '/api/refresh-interval':
+            self.set_refresh_interval()
         else:
             self.send_response(404)
             self.end_headers()
@@ -193,6 +202,49 @@ class PriceAPIHandler(SimpleHTTPRequestHandler):
             self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
             self.wfile.write(json.dumps({'success': True, 'message': '配置已保存'}).encode('utf-8'))
+        except Exception as e:
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': False, 'error': str(e)}).encode('utf-8'))
+
+    def send_refresh_interval(self):
+        """返回当前刷新间隔"""
+        global REFRESH_INTERVAL
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.end_headers()
+        self.wfile.write(json.dumps({
+            'interval': REFRESH_INTERVAL,
+            'interval_minutes': REFRESH_INTERVAL / 60
+        }).encode('utf-8'))
+
+    def set_refresh_interval(self):
+        """设置刷新间隔"""
+        global REFRESH_INTERVAL
+        try:
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            data = json.loads(post_data.decode('utf-8'))
+            
+            new_interval = int(data.get('interval', 120))
+            # 限制范围：最小1分钟，最大120分钟
+            new_interval = max(60, min(7200, new_interval))
+            
+            REFRESH_INTERVAL = new_interval
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] 刷新间隔已更新为 {new_interval} 秒 ({new_interval/60:.0f}分钟)")
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                'success': True,
+                'interval': REFRESH_INTERVAL,
+                'message': f'刷新间隔已设置为 {REFRESH_INTERVAL/60:.0f} 分钟'
+            }).encode('utf-8'))
         except Exception as e:
             self.send_response(500)
             self.send_header('Content-Type', 'application/json')
@@ -573,9 +625,9 @@ if __name__ == '__main__':
     initial_sync_thread = threading.Thread(target=run_data_sync, daemon=True)
     initial_sync_thread.start()
 
-    # 2. 启动自动刷新线程 (每2分钟=120秒)
-    refresh_thread = threading.Thread(target=auto_refresh_scheduler, args=(120,), daemon=True)
+    # 2. 启动自动刷新线程 (使用全局REFRESH_INTERVAL变量)
+    refresh_thread = threading.Thread(target=auto_refresh_scheduler, daemon=True)
     refresh_thread.start()
     
-    server = HTTPServer(('', 8080), PriceAPIHandler)
+    server = ThreadingHTTPServer(('', 8080), PriceAPIHandler)
     server.serve_forever()
