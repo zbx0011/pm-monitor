@@ -1124,56 +1124,162 @@
                     <input type="checkbox" id="alert-enabled" style="width: 18px; height: 18px; cursor: pointer;">
                 </label>
             </div>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
-                <!-- 铂金阈值 -->
-                <div style="background: var(--bg-secondary); padding: 12px; border-radius: 8px;">
-                    <div style="font-weight: 600; margin-bottom: 8px; color: var(--text-primary);">💎 铂金阈值</div>
-                    <div style="display: flex; gap: 12px; align-items: center;">
-                        <div style="flex: 1;">
-                            <label style="font-size: 0.75rem; color: var(--text-muted);">最小 %</label>
-                            <input type="number" id="pt-min" value="5" step="0.5"
-                                style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-card); color: var(--text-primary);">
-                        </div>
-                        <div style="flex: 1;">
-                            <label style="font-size: 0.75rem; color: var(--text-muted);">最大 %</label>
-                            <input type="number" id="pt-max" value="25" step="0.5"
-                                style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-card); color: var(--text-primary);">
+
+            <!-- 警报设置选项卡 -->
+            <div
+                style="display: flex; gap: 4px; margin-bottom: 16px; background: var(--bg-secondary); padding: 4px; border-radius: 8px; width: fit-content;">
+                <button onclick="switchAlertTab('general')" id="alert-tab-general"
+                    style="padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500; background: var(--accent-gold); color: #000;">
+                    📊 通用设置
+                </button>
+                <button onclick="switchAlertTab('contract')" id="alert-tab-contract"
+                    style="padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500; background: transparent; color: var(--text-muted);">
+                    📋 特定合约
+                </button>
+            </div>
+
+            <!-- 通用设置面板 -->
+            <div id="alert-panel-general">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                    <!-- 铂金阈值 -->
+                    <div style="background: var(--bg-secondary); padding: 12px; border-radius: 8px;">
+                        <div style="font-weight: 600; margin-bottom: 8px; color: var(--text-primary);">💎 铂金阈值</div>
+                        <div style="display: flex; gap: 12px; align-items: center;">
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.75rem; color: var(--text-muted);">最小 %</label>
+                                <input type="number" id="pt-min" value="5" step="0.5"
+                                    style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-card); color: var(--text-primary);">
+                            </div>
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.75rem; color: var(--text-muted);">最大 %</label>
+                                <input type="number" id="pt-max" value="25" step="0.5"
+                                    style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-card); color: var(--text-primary);">
+                            </div>
                         </div>
                     </div>
-                </div>
-                <!-- 钯金阈值 -->
-                <div style="background: var(--bg-secondary); padding: 12px; border-radius: 8px;">
-                    <div style="font-weight: 600; margin-bottom: 8px; color: var(--text-primary);">🔶 钯金阈值</div>
-                    <div style="display: flex; gap: 12px; align-items: center;">
-                        <div style="flex: 1;">
-                            <label style="font-size: 0.75rem; color: var(--text-muted);">最小 %</label>
-                            <input type="number" id="pd-min" value="5" step="0.5"
-                                style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-card); color: var(--text-primary);">
-                        </div>
-                        <div style="flex: 1;">
-                            <label style="font-size: 0.75rem; color: var(--text-muted);">最大 %</label>
-                            <input type="number" id="pd-max" value="25" step="0.5"
-                                style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-card); color: var(--text-primary);">
+                    <!-- 钯金阈值 -->
+                    <div style="background: var(--bg-secondary); padding: 12px; border-radius: 8px;">
+                        <div style="font-weight: 600; margin-bottom: 8px; color: var(--text-primary);">🔶 钯金阈值</div>
+                        <div style="display: flex; gap: 12px; align-items: center;">
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.75rem; color: var(--text-muted);">最小 %</label>
+                                <input type="number" id="pd-min" value="5" step="0.5"
+                                    style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-card); color: var(--text-primary);">
+                            </div>
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.75rem; color: var(--text-muted);">最大 %</label>
+                                <input type="number" id="pd-max" value="25" step="0.5"
+                                    style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-card); color: var(--text-primary);">
+                            </div>
                         </div>
                     </div>
-                </div>
-                <!-- 冷却时间 -->
-                <div style="background: var(--bg-secondary); padding: 12px; border-radius: 8px;">
-                    <div style="font-weight: 600; margin-bottom: 8px; color: var(--text-primary);">⏱️ 冷却时间</div>
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                        <input type="number" id="alert-cooldown" value="60" min="1" max="1440"
-                            style="width: 80px; padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-card); color: var(--text-primary);">
-                        <span style="color: var(--text-secondary); font-size: 0.85rem;">分钟</span>
+                    <!-- 冷却时间 -->
+                    <div style="background: var(--bg-secondary); padding: 12px; border-radius: 8px;">
+                        <div style="font-weight: 600; margin-bottom: 8px; color: var(--text-primary);">⏱️ 冷却时间</div>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <input type="number" id="alert-cooldown" value="60" min="1" max="1440"
+                                style="width: 80px; padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-card); color: var(--text-primary);">
+                            <span style="color: var(--text-secondary); font-size: 0.85rem;">分钟</span>
+                        </div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">同一配对触发警报后的静默时间</div>
                     </div>
-                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">同一配对触发警报后的静默时间</div>
-                </div>
-                <!-- Webhook -->
-                <div style="background: var(--bg-secondary); padding: 12px; border-radius: 8px;">
-                    <div style="font-weight: 600; margin-bottom: 8px; color: var(--text-primary);">🔗 Webhook</div>
-                    <div id="webhook-url" style="font-size: 0.8rem; color: var(--text-muted); word-break: break-all;">
-                        加载中...</div>
+                    <!-- Webhook -->
+                    <div style="background: var(--bg-secondary); padding: 12px; border-radius: 8px;">
+                        <div style="font-weight: 600; margin-bottom: 8px; color: var(--text-primary);">🔗 Webhook</div>
+                        <div id="webhook-url"
+                            style="font-size: 0.8rem; color: var(--text-muted); word-break: break-all;">
+                            加载中...</div>
+                    </div>
                 </div>
             </div>
+
+            <!-- 特定合约面板 -->
+            <div id="alert-panel-contract" style="display: none;">
+                <div style="margin-bottom: 12px; display: flex; align-items: center; gap: 12px;">
+                    <span style="font-size: 0.85rem; color: var(--text-secondary);">选择合约配对:</span>
+                    <select id="contract-alert-pair" onchange="loadContractAlertSettings()"
+                        style="padding: 8px 12px; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); font-size: 0.85rem; cursor: pointer;">
+                        <optgroup label="💎 铂金配对">
+                            <option value="pt-2610-2604">PT2610 vs PLJ2026 (2610-2604)</option>
+                            <option value="pt-2610-2601">PT2610 vs PLF2026 (2610-2601)</option>
+                            <option value="pt-2610-2607">PT2610 vs PLN2026 (2610-2607)</option>
+                            <option value="pt-2610-2610">PT2610 vs PLV2026 (2610-2610)</option>
+                            <option value="pt-2606-2604">PT2606 vs PLJ2026 (2606-2604)</option>
+                            <option value="pt-2606-2601">PT2606 vs PLF2026 (2606-2601)</option>
+                            <option value="pt-2606-2607">PT2606 vs PLN2026 (2606-2607)</option>
+                            <option value="pt-2606-2610">PT2606 vs PLV2026 (2606-2610)</option>
+                        </optgroup>
+                        <optgroup label="🔶 钯金配对">
+                            <option value="pd-2606-2606">PD2606 vs PAM2026 (2606-2606)</option>
+                            <option value="pd-2606-2603">PD2606 vs PAH2026 (2606-2603)</option>
+                            <option value="pd-2608-2606">PD2608 vs PAM2026 (2608-2606)</option>
+                            <option value="pd-2610-2609">PD2610 vs PAU2026 (2610-2609)</option>
+                            <option value="pd-2612-2612">PD2612 vs PAZ2026 (2612-2612)</option>
+                        </optgroup>
+                    </select>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px;">
+                    <!-- 启用此合约警报 -->
+                    <div style="background: var(--bg-secondary); padding: 12px; border-radius: 8px;">
+                        <div style="font-weight: 600; margin-bottom: 8px; color: var(--text-primary);">🎯 启用</div>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="contract-alert-enabled"
+                                style="width: 18px; height: 18px; cursor: pointer;">
+                            <span style="font-size: 0.85rem; color: var(--text-secondary);">监控此配对</span>
+                        </label>
+                    </div>
+                    <!-- 最小阈值 -->
+                    <div style="background: var(--bg-secondary); padding: 12px; border-radius: 8px;">
+                        <div style="font-weight: 600; margin-bottom: 8px; color: var(--text-primary);">📉 最小阈值</div>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <input type="number" id="contract-alert-min" value="15" step="0.5"
+                                style="width: 70px; padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-card); color: var(--text-primary);">
+                            <span style="color: var(--text-muted); font-size: 0.85rem;">%</span>
+                        </div>
+                        <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">低于此值时警报</div>
+                    </div>
+                    <!-- 最大阈值 -->
+                    <div style="background: var(--bg-secondary); padding: 12px; border-radius: 8px;">
+                        <div style="font-weight: 600; margin-bottom: 8px; color: var(--text-primary);">📈 最大阈值</div>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <input type="number" id="contract-alert-max" value="25" step="0.5"
+                                style="width: 70px; padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-card); color: var(--text-primary);">
+                            <span style="color: var(--text-muted); font-size: 0.85rem;">%</span>
+                        </div>
+                        <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">高于此值时警报</div>
+                    </div>
+                    <!-- 独立冷却时间 -->
+                    <div style="background: var(--bg-secondary); padding: 12px; border-radius: 8px;">
+                        <div style="font-weight: 600; margin-bottom: 8px; color: var(--text-primary);">⏱️ 冷却时间</div>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <input type="number" id="contract-alert-cooldown" value="30" min="1" max="1440"
+                                style="width: 70px; padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-card); color: var(--text-primary);">
+                            <span style="color: var(--text-muted); font-size: 0.85rem;">分钟</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 已配置的合约警报列表 -->
+                <div style="margin-top: 16px; background: var(--bg-secondary); padding: 12px; border-radius: 8px;">
+                    <div style="font-weight: 600; margin-bottom: 8px; color: var(--text-primary);">📋 已配置的合约警报</div>
+                    <div id="contract-alerts-list" style="font-size: 0.85rem; color: var(--text-secondary);">
+                        暂无特定合约警报配置
+                    </div>
+                </div>
+
+                <div style="margin-top: 12px; display: flex; gap: 8px;">
+                    <button onclick="addContractAlert()"
+                        style="padding: 6px 14px; background: var(--positive); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">
+                        ➕ 添加/更新
+                    </button>
+                    <button onclick="removeContractAlert()"
+                        style="padding: 6px 14px; background: var(--negative); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">
+                        🗑️ 删除
+                    </button>
+                </div>
+            </div>
+
             <div style="margin-top: 16px; display: flex; gap: 12px;">
                 <button id="save-alert-config" onclick="saveAlertConfig()"
                     style="padding: 8px 20px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
@@ -4044,13 +4150,19 @@
                 if (!res.ok) throw new Error('Failed to load alert config');
                 const config = await res.json();
 
-                // 填充表单
+                // 填充通用设置表单
                 document.getElementById('alert-enabled').checked = config.enabled || false;
                 document.getElementById('pt-min').value = config.thresholds?.platinum?.min || 5;
                 document.getElementById('pt-max').value = config.thresholds?.platinum?.max || 25;
                 document.getElementById('pd-min').value = config.thresholds?.palladium?.min || 5;
                 document.getElementById('pd-max').value = config.thresholds?.palladium?.max || 25;
                 document.getElementById('alert-cooldown').value = config.cooldown_minutes || 60;
+
+                // 加载特定合约警报配置
+                if (config.contract_alerts) {
+                    contractAlerts = config.contract_alerts;
+                    renderContractAlertsList();
+                }
 
                 // 显示 Webhook URL（部分隐藏）
                 const webhookUrl = config.webhook_url || '未配置';
@@ -4083,7 +4195,8 @@
                             max: parseFloat(document.getElementById('pd-max').value) || 25
                         }
                     },
-                    cooldown_minutes: parseInt(document.getElementById('alert-cooldown').value) || 60
+                    cooldown_minutes: parseInt(document.getElementById('alert-cooldown').value) || 60,
+                    contract_alerts: contractAlerts  // 保存特定合约警报配置
                 };
 
                 const res = await fetch('/api/alert-config', {
@@ -4106,6 +4219,126 @@
         }
 
         // refreshData 函数已在上方定义，此处不再重复
+
+        // ========== 特定合约警报管理 ==========
+
+        // 存储特定合约警报配置
+        let contractAlerts = {};
+
+        // 切换警报设置选项卡
+        function switchAlertTab(tab) {
+            const generalTab = document.getElementById('alert-tab-general');
+            const contractTab = document.getElementById('alert-tab-contract');
+            const generalPanel = document.getElementById('alert-panel-general');
+            const contractPanel = document.getElementById('alert-panel-contract');
+
+            if (tab === 'general') {
+                generalTab.style.background = 'var(--accent-gold)';
+                generalTab.style.color = '#000';
+                contractTab.style.background = 'transparent';
+                contractTab.style.color = 'var(--text-muted)';
+                generalPanel.style.display = 'block';
+                contractPanel.style.display = 'none';
+            } else {
+                generalTab.style.background = 'transparent';
+                generalTab.style.color = 'var(--text-muted)';
+                contractTab.style.background = 'var(--accent-gold)';
+                contractTab.style.color = '#000';
+                generalPanel.style.display = 'none';
+                contractPanel.style.display = 'block';
+                loadContractAlertSettings();
+                renderContractAlertsList();
+            }
+        }
+
+        // 加载选中合约的警报设置
+        function loadContractAlertSettings() {
+            const pairKey = document.getElementById('contract-alert-pair').value;
+            const config = contractAlerts[pairKey] || {
+                enabled: false,
+                min: 15,
+                max: 25,
+                cooldown: 30
+            };
+
+            document.getElementById('contract-alert-enabled').checked = config.enabled;
+            document.getElementById('contract-alert-min').value = config.min;
+            document.getElementById('contract-alert-max').value = config.max;
+            document.getElementById('contract-alert-cooldown').value = config.cooldown;
+        }
+
+        // 添加/更新合约警报
+        function addContractAlert() {
+            const pairKey = document.getElementById('contract-alert-pair').value;
+            const pairLabel = document.getElementById('contract-alert-pair').selectedOptions[0].text;
+
+            contractAlerts[pairKey] = {
+                enabled: document.getElementById('contract-alert-enabled').checked,
+                min: parseFloat(document.getElementById('contract-alert-min').value) || 15,
+                max: parseFloat(document.getElementById('contract-alert-max').value) || 25,
+                cooldown: parseInt(document.getElementById('contract-alert-cooldown').value) || 30,
+                label: pairLabel
+            };
+
+            renderContractAlertsList();
+            showAlertStatus('✅ 合约警报已添加');
+        }
+
+        // 删除合约警报
+        function removeContractAlert() {
+            const pairKey = document.getElementById('contract-alert-pair').value;
+            if (contractAlerts[pairKey]) {
+                delete contractAlerts[pairKey];
+                renderContractAlertsList();
+                loadContractAlertSettings();
+                showAlertStatus('🗑️ 合约警报已删除');
+            }
+        }
+
+        // 渲染已配置的合约警报列表
+        function renderContractAlertsList() {
+            const listEl = document.getElementById('contract-alerts-list');
+            const keys = Object.keys(contractAlerts);
+
+            if (keys.length === 0) {
+                listEl.innerHTML = '<span style="color: var(--text-muted);">暂无特定合约警报配置</span>';
+                return;
+            }
+
+            let html = '<div style="display: flex; flex-wrap: wrap; gap: 8px;">';
+            for (const key of keys) {
+                const alert = contractAlerts[key];
+                const statusColor = alert.enabled ? 'var(--positive)' : 'var(--text-muted)';
+                const statusIcon = alert.enabled ? '🟢' : '⚪';
+                html += `
+                    <div style="background: var(--bg-card); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); cursor: pointer;"
+                         onclick="selectContractAlert('${key}')">
+                        <div style="font-weight: 500; color: ${statusColor};">
+                            ${statusIcon} ${alert.label || key}
+                        </div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">
+                            ${alert.min}% ~ ${alert.max}% | ${alert.cooldown}分钟
+                        </div>
+                    </div>
+                `;
+            }
+            html += '</div>';
+            listEl.innerHTML = html;
+        }
+
+        // 点击列表中的合约警报时选中它
+        function selectContractAlert(pairKey) {
+            document.getElementById('contract-alert-pair').value = pairKey;
+            loadContractAlertSettings();
+        }
+
+        // 显示警报保存状态
+        function showAlertStatus(message) {
+            const statusEl = document.getElementById('alert-save-status');
+            statusEl.textContent = message;
+            statusEl.style.color = 'var(--positive)';
+            setTimeout(() => { statusEl.textContent = ''; }, 3000);
+        }
 
 
         // 页面加载时初始化
