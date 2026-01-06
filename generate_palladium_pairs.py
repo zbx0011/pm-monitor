@@ -78,21 +78,33 @@ def calculate_spread(gfex_df, cme_df, gfex_symbol, cme_symbol):
     for idx, row in gfex_df.iterrows():
         gfex_price = float(row['close'])
         
-        # 查找CME同一小时的数据 (允许±30分钟匹配)
-        time_diff = abs((cme_df.index - idx).total_seconds())
-        matches = cme_df[time_diff <= 1800]
+        # 只匹配等于或早于广期所时间的CME数据（交集时间原则）
+        # 不能使用未来的CME数据
+        valid_cme = cme_df[cme_df.index <= idx]
         
-        if len(matches) == 0:
+        if len(valid_cme) == 0:
             continue
         
-        cme_row = matches.iloc[0]
+        # 在有效范围内找时间差最小的（即最接近但不晚于广期所时间的）
+        diffs = (idx - valid_cme.index).total_seconds()
+        
+        # 只保留 30 分钟内的数据
+        valid_mask = diffs <= 1800
+        if not valid_mask.any():
+            continue
+        
+        # 找到时间差最小的那个索引（最接近的）
+        valid_diffs = diffs[valid_mask]
+        best_match_idx = valid_cme.index[valid_mask][valid_diffs.argmin()]
+        cme_row = cme_df.loc[best_match_idx]
+        
         cme_usd = float(cme_row['close'])
         cme_cny = cme_usd * RATE / OZ_TO_GRAM
         spread = gfex_price - cme_cny
         spread_pct = (spread / cme_cny) * 100
         
         history.append({
-            'date': idx.strftime('%Y-%m-%d %H:%M'),
+            'date': best_match_idx.strftime('%Y-%m-%d %H:%M'),  # 使用CME时间，确保和顶部显示一致
             'gfex_price': gfex_price,
             'cme_usd': cme_usd,
             'cme_cny': cme_cny,
